@@ -1,0 +1,170 @@
+# docker-compose.yml
+# This file defines our entire local development environment.
+# Every service, network, and volume is declared here.
+# Running "docker-compose up" starts everything at once.
+
+version: '3.9'
+
+# ============================================
+# SERVICES — each one is a separate container
+# ============================================
+services:
+
+  # ------------------------------------------
+  # POSTGRES — our primary database
+  # Stores: users, integrations, agent runs
+  # ------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    # alpine = lightweight Linux, smaller image size
+    container_name: nexus_postgres
+    restart: unless-stopped
+    # restart policy: if container crashes, restart it
+    # unless-stopped = don't restart if WE manually stopped it
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Values come from .env file — never hardcoded here
+    ports:
+      - "5432:5432"
+      # hostPort:containerPort
+      # Lets us connect from our machine using a DB tool like DBeaver
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Named volume = data persists even if container is destroyed
+      # Without this: every restart wipes your database
+    networks:
+      - nexus_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # Other services wait for postgres to be READY
+      # not just started — there's a difference
+
+  # ------------------------------------------
+  # REDIS — message queue + cache
+  # Used for: background job queues, caching LLM responses
+  # ------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: nexus_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      # Persists queue data across restarts
+    networks:
+      - nexus_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
+    # appendonly yes = write every operation to disk
+    # Without this: Redis loses all data on restart
+
+  # ------------------------------------------
+  # API — FastAPI backend
+  # ------------------------------------------
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: ../../infrastructure/docker/api.Dockerfile
+    container_name: nexus_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Notice: hostname is "postgres" not "localhost"
+      # Inside Docker network, service name = hostname
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=${ENVIRONMENT}
+    volumes:
+      - ./apps/api:/app
+      # Mounts local code into container
+      # Change code locally → reflects instantly (hot reload)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # API only starts AFTER postgres AND redis are healthy
+      # This prevents "connection refused" errors on startup
+    networks:
+      - nexus_network
+
+  # ------------------------------------------
+  # WEB — Next.js frontend
+  # ------------------------------------------
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: ../../infrastructure/docker/web.Dockerfile
+    container_name: nexus_web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      # This line is important:
+      # Mounts local code BUT keeps node_modules from container
+      # Prevents Windows/Linux node_modules conflict
+    depends_on:
+      - api
+    networks:
+      - nexus_network
+
+  # ------------------------------------------
+  # NGINX — reverse proxy
+  # Routes: / → web:3000, /api → api:8000
+  # ------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: nexus_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # All traffic enters through port 80
+      # Nginx decides where it goes
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # ro = read only, container can't modify our config
+    depends_on:
+      - api
+      - web
+    networks:
+      - nexus_network
+
+# ============================================
+# VOLUMES — persistent data storage
+# ============================================
+volumes:
+  postgres_data:
+    # Docker manages this on your host machine
+    # Data survives container restarts and removal
+  redis_data:
+
+# ============================================
+# NETWORKS — private communication channel
+# ============================================
+networks:
+  nexus_network:
+    driver: bridge
+    # All containers on this network find each other by name
+    # postgres, redis, api, web, nginx are all hostnames here
+    # Nothing outside this network can reach them directly
+    # Only Nginx is the public entry point
