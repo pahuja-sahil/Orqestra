@@ -1,0 +1,84 @@
+# app/core/config.py
+# ============================================
+# SINGLE SOURCE OF TRUTH FOR ALL CONFIG
+# ============================================
+# Pydantic Settings does two things:
+#   1. Reads values from .env file automatically
+#   2. Validates types — if DATABASE_URL is missing
+#      the app CRASHES at startup with a clear error
+#
+# WHY crash at startup?
+#   Better to fail immediately with clear message
+#   than run for hours with wrong config silently
+# ============================================
+
+from pydantic_settings import BaseSettings
+from typing import Optional
+
+
+class Settings(BaseSettings):
+
+    # ----------------------------------------
+    # APPLICATION
+    # ----------------------------------------
+    ENVIRONMENT: str = "development"
+    SECRET_KEY: str
+    # No default = REQUIRED
+    # Missing = app won't start
+
+    # ----------------------------------------
+    # DATABASE
+    # ----------------------------------------
+    DATABASE_URL: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
+
+    # ----------------------------------------
+    # REDIS
+    # ----------------------------------------
+    REDIS_URL: str = "redis://redis:6379"
+
+    # ----------------------------------------
+    # AUTH
+    # ----------------------------------------
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    NEXTAUTH_SECRET: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # ----------------------------------------
+    # LLM — Free providers
+    # ----------------------------------------
+    GEMINI_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
+
+    # Active LLM provider — easy to switch
+    LLM_PROVIDER: str = "gemini"
+    # Options: "gemini" | "groq"
+    # Change this one value to switch entire app
+
+    # ----------------------------------------
+    # MONITORING
+    # ----------------------------------------
+    LANGFUSE_PUBLIC_KEY: Optional[str] = None
+    LANGFUSE_SECRET_KEY: Optional[str] = None
+    LANGFUSE_HOST: str = "https://cloud.langfuse.com"
+
+    # ----------------------------------------
+    # EMAIL
+    # ----------------------------------------
+    RESEND_API_KEY: Optional[str] = None
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+        # DATABASE_URL ≠ database_url
+        # Prevents subtle bugs from case mismatches
+
+
+# Singleton pattern
+# One instance imported everywhere
+# Never create Settings() again anywhere else
+settings = Settings()

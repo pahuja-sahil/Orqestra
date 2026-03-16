@@ -31,12 +31,15 @@ pydantic==2.5.3
 pydantic-settings==2.1.0
 email-validator==2.1.0
 
-# AI / Agents (we'll use later but install now)
+# AI / Agents
 langchain==0.1.0
 langgraph==0.0.26
-langchain-openai==0.0.5
+langchain-google-genai==0.0.6
+langchain-groq==0.0.1
 chromadb==0.4.22
-openai==1.10.0
+
+# Monitoring
+langfuse==2.7.3
 
 # Guardrails
 guardrails-ai==0.4.0
@@ -44,8 +47,10 @@ guardrails-ai==0.4.0
 # Email
 resend==0.7.0
 
-# Logging & Observability
+# Logging
 structlog==24.1.0
+
+# Observability (Phase 9)
 opentelemetry-api==1.22.0
 opentelemetry-sdk==1.22.0
 
