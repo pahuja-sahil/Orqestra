@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
     NEXTAUTH_SECRET: str
+    NEXTAUTH_URL: str = "http://localhost:3000"
+    NEXT_PUBLIC_API_URL: str = "http://localhost/api"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
@@ -74,6 +76,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
         # DATABASE_URL ≠ database_url
         # Prevents subtle bugs from case mismatches
 
