@@ -47,10 +47,10 @@ export function Navbar() {
       <div className="flex items-center gap-3">
         <button
           onClick={toggle}
-          className={`p-2 rounded-full border transition-all duration-300 ${
+          className={`p-2 rounded-full border-2 transition-all duration-300 ${
             isDark
-              ? "border-red-950/50 bg-red-950/20 text-red-400 hover:bg-red-950/40"
-              : "border-red-100 bg-red-50/50 text-red-600 hover:bg-red-100"
+              ? "border-red-500 bg-red-950/40 text-red-400 hover:bg-red-900/50 hover:border-red-700"
+              : "border-red-200 bg-red-50/50 text-red-600 hover:bg-red-100 hover:border-red-300"
           }`}
         >
           {isDark ? <Sun size={16} /> : <Moon size={16} />}
