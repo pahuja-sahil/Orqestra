@@ -177,7 +177,6 @@ export default function HomePage() {
             className="flex gap-4"
           >
             <motion.button
-              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate("/auth/login")}
               className={`group flex items-center gap-2 px-8 py-3.5 rounded-full font-semibold transition-all duration-200 shadow-xl ${
@@ -306,7 +305,6 @@ export default function HomePage() {
                 Join developers who let NEXUS handle the integrations.
               </p>
               <motion.button
-                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => navigate("/auth/login")}
                 className={`group inline-flex items-center gap-2 px-10 py-4 rounded-full font-semibold transition-all duration-200 shadow-xl ${

@@ -57,7 +57,6 @@ export function Navbar() {
         </button>
 
         <motion.button
-          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate("/auth/login")}
           className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${

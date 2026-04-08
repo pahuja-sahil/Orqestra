@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     # ----------------------------------------
     ENVIRONMENT: str = "development"
     SECRET_KEY: str
+    BACKEND_URL: str = "http://localhost:8000"
+    FRONTEND_URL: str = "http://localhost:5173"
     # No default = REQUIRED
     # Missing = app won't start
 
