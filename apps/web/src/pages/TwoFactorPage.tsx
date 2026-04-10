@@ -3,14 +3,14 @@ import { motion } from "motion/react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
-import { Shield } from "lucide-react"
+import { Shield, ArrowLeft } from "lucide-react"
 import api from "@/lib/api"
 
 export default function TwoFactorPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { isDark } = useThemeStore()
-  const { setAccessToken } = useAuthStore()
+  const { setAccessToken, setUser } = useAuthStore()
 
   const [code, setCode] = useState("")
   const [loading, setLoading] = useState(false)
@@ -19,9 +19,7 @@ export default function TwoFactorPage() {
   const pendingToken = searchParams.get("token")
 
   useEffect(() => {
-    if (!pendingToken) {
-      navigate("/auth/login")
-    }
+    if (!pendingToken) navigate("/auth/login")
   }, [pendingToken, navigate])
 
   const handleVerify = async () => {
@@ -37,9 +35,16 @@ export default function TwoFactorPage() {
         code,
       })
       setAccessToken(res.data.access_token)
+      
+      const userRes = await api.get("/api/auth/me", {
+        headers: { Authorization: `Bearer ${res.data.access_token}` }
+      })
+      setUser(userRes.data)
+      
       navigate("/dashboard")
     } catch {
       setError("Invalid code. Please try again.")
+      setCode("")
     } finally {
       setLoading(false)
     }
@@ -47,98 +52,93 @@ export default function TwoFactorPage() {
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center transition-colors duration-500 ${
-        isDark ? "bg-[#050008]" : "bg-[#fafafa]"
-      }`}
+      className="min-h-screen flex items-center justify-center relative overflow-hidden"
+      style={{
+        background: isDark
+          ? "radial-gradient(ellipse at 50% 30%, rgba(120,0,0,0.35) 0%, transparent 55%), #050008"
+          : "radial-gradient(ellipse at 50% 30%, rgba(220,20,60,0.1) 0%, transparent 55%), #fafafa",
+      }}
     >
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: isDark
-            ? "radial-gradient(ellipse at 50% 0%, rgba(139,0,0,0.3) 0%, transparent 60%)"
-            : "radial-gradient(ellipse at 50% 0%, rgba(220,20,60,0.1) 0%, transparent 60%)",
-        }}
-      />
-
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className={`relative w-full max-w-md mx-4 p-8 rounded-3xl border ${
+        transition={{ duration: 0.5 }}
+        className={`relative w-full max-w-md mx-4 p-8 rounded-3xl border backdrop-blur-sm ${
           isDark
-            ? "border-red-950/40 bg-red-950/10 backdrop-blur-sm"
-            : "border-red-100 bg-white/80 backdrop-blur-sm shadow-xl shadow-red-50"
+            ? "border-red-800/50 bg-[#0d0005]/90 shadow-2xl shadow-red-950/40"
+            : "border-red-200/80 bg-white/95 shadow-2xl shadow-red-100/60"
         }`}
       >
-        <div className="relative z-10">
-          <div className="flex flex-col items-center mb-8">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
-                isDark ? "bg-red-950/60" : "bg-red-50"
-              }`}
-            >
-              <Shield
-                size={24}
-                className={isDark ? "text-red-500" : "text-red-600"}
-              />
-            </motion.div>
+        <motion.div
+          className="absolute inset-0 rounded-3xl pointer-events-none"
+          animate={{ opacity: [0.4, 0.7, 0.4] }}
+          transition={{ duration: 3, repeat: Infinity }}
+          style={{
+            background: isDark
+              ? "radial-gradient(ellipse at 50% 0%, rgba(180,0,0,0.2) 0%, transparent 60%)"
+              : "radial-gradient(ellipse at 50% 0%, rgba(220,20,60,0.05) 0%, transparent 60%)",
+          }}
+        />
 
-            <h1
-              className={`text-2xl font-bold mb-1 ${
-                isDark ? "text-white" : "text-slate-900"
-              }`}
-            >
-              Two-Factor Auth
-            </h1>
-            <p
-              className={`text-sm text-center ${
-                isDark ? "text-slate-400" : "text-slate-600"
-              }`}
-            >
-              Enter the 6-digit code from your authenticator app
-            </p>
-          </div>
+        <div className="relative z-10 flex flex-col items-center">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 ${
+              isDark
+                ? "bg-red-950/80 border border-red-800/60"
+                : "bg-red-50 border border-red-200"
+            }`}
+          >
+            <Shield size={24} className={isDark ? "text-red-400" : "text-red-600"} />
+          </motion.div>
 
-          <div className="mb-6">
-            <input
-              type="text"
-              maxLength={6}
-              value={code}
-              onChange={(e) => {
-                setError("")
-                setCode(e.target.value.replace(/\D/g, ""))
-              }}
-              placeholder="000000"
-              className={`w-full text-center text-3xl font-mono tracking-[0.5em] py-4 rounded-2xl border outline-none transition-all duration-200 ${
-                isDark
-                  ? "bg-slate-900/80 border-slate-700 text-white focus:border-red-700 placeholder:text-slate-700"
-                  : "bg-white border-slate-200 text-slate-900 focus:border-red-400 placeholder:text-slate-300"
-              } ${error ? (isDark ? "border-red-700" : "border-red-400") : ""}`}
-            />
-            {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-red-500 text-xs text-center mt-2"
-              >
-                {error}
-              </motion.p>
-            )}
-          </div>
+          <h1 className={`text-2xl font-bold mb-2 ${isDark ? "text-white" : "text-slate-900"}`}>
+            Two-Factor Auth
+          </h1>
+          <p className={`text-sm text-center mb-8 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+            Enter the 6-digit code from your authenticator app
+          </p>
+
+          <input
+            type="text"
+            maxLength={6}
+            value={code}
+            onChange={(e) => {
+              setError("")
+              setCode(e.target.value.replace(/\D/g, ""))
+            }}
+            onKeyDown={(e) => e.key === "Enter" && handleVerify()}
+            placeholder="000000"
+            autoFocus
+            className={`w-full text-center text-3xl font-mono tracking-[0.5em] py-4 rounded-2xl border-2 outline-none mb-3 ${
+              isDark
+                ? "bg-slate-900/90 border-red-900/60 text-white focus:border-red-600 placeholder:text-slate-700"
+                : "bg-slate-50 border-red-200 text-slate-900 focus:border-red-500 placeholder:text-slate-300"
+            } ${error ? (isDark ? "border-red-500" : "border-red-500") : ""}`}
+          />
+
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-red-400 text-xs text-center mb-3"
+            >
+              {error}
+            </motion.p>
+          )}
 
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: code.length === 6 ? 1.02 : 1 }}
+            whileTap={{ scale: code.length === 6 ? 0.98 : 1 }}
             onClick={handleVerify}
             disabled={loading || code.length !== 6}
-            className={`w-full py-3.5 rounded-2xl font-semibold text-sm transition-all duration-200 ${
+            className={`w-full py-3.5 rounded-2xl font-semibold text-sm mb-4 ${
               code.length === 6
                 ? isDark
-                  ? "bg-red-700 text-white hover:bg-red-600"
-                  : "bg-red-600 text-white hover:bg-red-500"
+                  ? "bg-red-700 text-white hover:bg-red-600 shadow-lg shadow-red-950/50"
+                  : "bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-200/60"
                 : isDark
                   ? "bg-slate-800 text-slate-600 cursor-not-allowed"
                   : "bg-slate-100 text-slate-400 cursor-not-allowed"
@@ -147,16 +147,16 @@ export default function TwoFactorPage() {
             {loading ? "Verifying..." : "Verify Code"}
           </motion.button>
 
-          <button
+          <motion.button
+            whileHover={{ x: -3 }}
             onClick={() => navigate("/auth/login")}
-            className={`w-full text-xs text-center mt-4 transition-colors duration-200 ${
-              isDark
-                ? "text-slate-600 hover:text-slate-400"
-                : "text-slate-400 hover:text-slate-600"
+            className={`flex items-center gap-2 text-sm font-medium ${
+              isDark ? "text-red-400/80 hover:text-red-300" : "text-red-600 hover:text-red-700"
             }`}
           >
-            ← Back to login
-          </button>
+            <ArrowLeft size={14} />
+            Back to login
+          </motion.button>
         </div>
       </motion.div>
     </div>

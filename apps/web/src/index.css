@@ -1,10 +1,18 @@
 @import "tailwindcss";
 
 @keyframes aurora {
-  from {
-    background-position: 50% 50%, 50% 50%;
-  }
-  to {
-    background-position: 350% 50%, 350% 50%;
-  }
+  from { background-position: 50% 50%, 50% 50%; }
+  to { background-position: 350% 50%, 350% 50%; }
+}
+
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 400ms;
+}
+
+button, a {
+  transition-duration: 150ms;
 }

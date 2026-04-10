@@ -146,6 +146,31 @@ async def verify_2fa(
     set_refresh_token_cookie(response, refresh_token)
     return {"access_token": access_token, "token_type": "bearer"}
 
+@router.post("/2fa/confirm")
+async def confirm_2fa(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    body = await request.json()
+    code = body.get("code")
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth_header.replace("Bearer ", "")
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    result = await db.execute(select(User).where(User.id == payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not verify_totp(user.totp_secret, code):
+        raise HTTPException(status_code=401, detail="Invalid 2FA code")
+    user.is_2fa_enabled = True
+    await db.commit()
+    logger.info("2fa_enabled", email=user.email)
+    return {"message": "2FA enabled successfully"}
+
 
 @router.post("/refresh")
 async def refresh_token(
@@ -203,3 +228,77 @@ async def setup_2fa(
 
     qr_code = generate_qr_code(secret, user.email)
     return {"qr_code": qr_code, "secret": secret}
+
+@router.get("/me")
+async def get_me(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth_header.replace("Bearer ", "")
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    result = await db.execute(select(User).where(User.id == payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "name": user.name,
+        "profile_picture": user.profile_picture,
+        "is_2fa_enabled": user.is_2fa_enabled
+    }
+
+@router.patch("/me/name")
+async def update_name(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    body = await request.json()
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth_header.replace("Bearer ", "")
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    result = await db.execute(select(User).where(User.id == payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.name = name
+    await db.commit()
+    return {"name": user.name}
+
+@router.post("/2fa/disable")
+async def disable_2fa(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    body = await request.json()
+    code = body.get("code")
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth_header.replace("Bearer ", "")
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    result = await db.execute(select(User).where(User.id == payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not verify_totp(user.totp_secret, code):
+        raise HTTPException(status_code=401, detail="Invalid 2FA code")
+    user.is_2fa_enabled = False
+    user.totp_secret = None
+    await db.commit()
+    logger.info("2fa_disabled", email=user.email)
+    return {"message": "2FA disabled successfully"}
