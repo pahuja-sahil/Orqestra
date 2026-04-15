@@ -56,7 +56,9 @@ class Settings(BaseSettings):
     # LLM — Free providers
     # ----------------------------------------
     GEMINI_API_KEY: Optional[str] = None
-    GROQ_API_KEY: Optional[str] = None
+    GROQ_API_KEY: str = ""
+    ELEVENLABS_API_KEY: str = ""
+    ELEVENLABS_VOICE_ID: str = "21m00Tcm4TlvDq8ikWAM"
 
     # Active LLM provider — easy to switch
     LLM_PROVIDER: str = "gemini"

@@ -61,3 +61,8 @@ opentelemetry-sdk>=1.24.0
 python-dotenv>=1.0.1
 tenacity>=8.3.0
 cryptography>=42.0.5
+
+# audio streaming
+groq>=0.4.0
+elevenlabs>=1.0.0
+websockets>=12.0

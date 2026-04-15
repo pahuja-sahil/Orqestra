@@ -4,7 +4,7 @@ import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
 import {
   LayoutDashboard, Link2, Bot, ScrollText,
-  Mic, Settings, Zap, LogOut
+  MessageSquare, Settings, Zap, LogOut
 } from "lucide-react"
 import api from "@/lib/api"
 
@@ -13,7 +13,7 @@ const navItems = [
   { icon: Link2, label: "Integrations", path: "/dashboard/integrations" },
   { icon: Bot, label: "Agents", path: "/dashboard/agents" },
   { icon: ScrollText, label: "Logs", path: "/dashboard/logs" },
-  { icon: Mic, label: "Voice", path: "/dashboard/voice" },
+  { icon: MessageSquare, label: "Converse", path: "/dashboard/converse" },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ]
 

@@ -7,6 +7,7 @@ import TwoFactorPage from './pages/TwoFactorPage'
 import OverviewPage from './pages/dashboard/OverviewPage'
 import SettingsPage from './pages/dashboard/SettingsPage'
 import ProtectedRoute from './components/auth/ProtectedRoute'
+import ConversePage from './pages/dashboard/ConversePage'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         }>
           <Route index element={<OverviewPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="converse" element={<ConversePage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
