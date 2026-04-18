@@ -3,6 +3,7 @@ import httpx
 from groq import Groq
 from app.core.config import settings
 from app.core.logger import logger
+from app.agents.rag_agent import run_agent
 
 groq_client = Groq(api_key=settings.GROQ_API_KEY)
 
@@ -60,7 +61,7 @@ async def synthesize_speech(text: str) -> bytes:
                 logger.info("tts_complete", chars=len(text))
                 return response.content
             else:
-                logger.error("tts_failed", status=response.status_code, body=response.text)
+                logger.warning("tts_unavailable", status=response.status_code)
                 return None
 
     except Exception as e:
@@ -69,18 +70,16 @@ async def synthesize_speech(text: str) -> bytes:
 
 
 async def process_command(text: str, source: str = "voice") -> str:
-    if not text:                          # ← was 'transcript', now 'text'
+    """
+    Main entry point for processing user commands.
+    Routes through the RAG agent for intelligent responses.
+    """
+    if not text:
         return "I didn't catch that. Could you try again?"
 
-    if source == "text":
-        return (
-            f"You typed: '{text}'. "
-            f"In Phase 3, I'll process this with my AI agents and integrate any API you need. "
-            f"For now, I'm confirming your text command was received successfully."
-        )
-
-    return (
-        f"I heard you say: '{text}'. "
-        f"In Phase 3, I'll process this with my AI agents and integrate any API you need. "
-        f"For now, I'm just echoing your command back to confirm voice is working."
-    )
+    try:
+        response = await run_agent(text, source=source)
+        return response
+    except Exception as e:
+        logger.error("agent_failed", error=str(e))
+        return "I encountered an issue processing your request. Please try again."

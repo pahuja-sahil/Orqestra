@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from "motion/react"
 import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
 import { useVoiceRecording } from "@/hooks/useVoiceRecording"
+import { useConverseStore } from "@/store/converseStore"
 import { Mic, MicOff, Send, RotateCcw, Volume2, MessageSquare } from "lucide-react"
+import ReactMarkdown from "react-markdown"
 import api from "@/lib/api"
 
 const TRANSITION = "transition-all duration-500 ease-in-out"
@@ -81,42 +83,134 @@ function ProcessingAnimation({ stage, isDark }: { stage: string; isDark: boolean
   )
 }
 
-export default function VoicePage() {
+function NexusResponse({ content, isDark }: { content: string; isDark: boolean }) {
+  return (
+    <ReactMarkdown
+      components={{
+        h1: ({ children }) => (
+          <h1 className={`text-base font-bold mb-2 mt-1 ${isDark ? "text-white" : "text-slate-900"}`}>
+            {children}
+          </h1>
+        ),
+        h2: ({ children }) => (
+          <h2 className={`text-sm font-bold mb-2 mt-3 ${isDark ? "text-white" : "text-slate-900"}`}>
+            {children}
+          </h2>
+        ),
+        h3: ({ children }) => (
+          <h3 className={`text-sm font-semibold mb-1 mt-2 ${isDark ? "text-red-400" : "text-red-600"}`}>
+            {children}
+          </h3>
+        ),
+        p: ({ children }) => (
+          <p className={`mb-2 leading-relaxed text-sm ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+            {children}
+          </p>
+        ),
+        strong: ({ children }) => (
+          <strong className={`font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>
+            {children}
+          </strong>
+        ),
+        ul: ({ children }) => (
+          <ul className="space-y-1.5 mb-3 ml-0 list-none">
+            {children}
+          </ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="space-y-1.5 mb-3 list-decimal list-inside">
+            {children}
+          </ol>
+        ),
+        li: ({ children }) => (
+          <li className={`flex items-start gap-2 text-sm ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+            <span className={`mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0 ${isDark ? "bg-red-500" : "bg-red-500"}`} />
+            <span className="flex-1">{children}</span>
+          </li>
+        ),
+        code: ({ children, className }) => {
+          const isBlock = className?.includes("language-")
+          return isBlock ? (
+            <pre className={`p-3 rounded-xl text-xs overflow-x-auto my-2 ${
+              isDark
+                ? "bg-black/50 text-green-400 border border-white/10"
+                : "bg-slate-50 text-slate-800 border border-slate-200"
+            }`}>
+              <code>{children}</code>
+            </pre>
+          ) : (
+            <code className={`px-1.5 py-0.5 rounded text-xs font-mono ${
+              isDark ? "bg-white/10 text-red-300" : "bg-red-50 text-red-700"
+            }`}>
+              {children}
+            </code>
+          )
+        },
+        a: ({ href, children }) => (
+          <a
+            href={href ?? ""}
+            target={"_blank"}
+            rel={"noopener noreferrer"}
+            className={`underline underline-offset-2 ${
+              isDark ? "text-red-400 hover:text-red-300" : "text-red-600 hover:text-red-700"
+            }`}
+          >
+            {children}
+          </a>
+        ),
+        em: ({ children }) => (
+          <em className={`not-italic text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+            {children}
+          </em>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  )
+}
+
+export default function ConversePage() {
   const { isDark } = useThemeStore()
   const { accessToken } = useAuthStore()
+  const { messages, addMessage, clearMessages } = useConverseStore()
   const [textInput, setTextInput] = useState("")
-  const [textResponse, setTextResponse] = useState("")
   const [textLoading, setTextLoading] = useState(false)
-  const [inputMode, setInputMode] = useState<"voice" | "text" | null>(null)
 
   const {
     voiceState,
     processingStage,
-    transcript,
     response,
     error,
     isSupported,
     startRecording,
     stopRecording,
     reset,
-  } = useVoiceRecording(accessToken, () => {
-    setInputMode("voice")
+  } = useVoiceRecording(accessToken, (text) => {
+    addMessage({ type: "user", content: text, inputMode: "voice" })
   })
+
+  useEffect(() => {
+    if (response) {
+      addMessage({ type: "nexus", content: response, inputMode: "voice" })
+    }
+  }, [response])
 
   const handleTextSubmit = async () => {
     if (!textInput.trim()) return
+    const userText = textInput
     setTextLoading(true)
-    setTextResponse("")
-    setInputMode("text")
+    setTextInput("")
+    addMessage({ type: "user", content: userText, inputMode: "text" })
     try {
       const res = await api.post(
         "/api/converse/process",
-        { text: textInput },
+        { text: userText },
         { headers: { Authorization: `Bearer ${accessToken}` } }
       )
-      setTextResponse(res.data.response)
+      addMessage({ type: "nexus", content: res.data.response, inputMode: "text" })
     } catch {
-      setTextResponse("Something went wrong. Please try again.")
+      addMessage({ type: "nexus", content: "Something went wrong. Please try again.", inputMode: "text" })
     } finally {
       setTextLoading(false)
     }
@@ -130,17 +224,12 @@ export default function VoicePage() {
   const handleClear = () => {
     reset()
     setTextInput("")
-    setTextResponse("")
-    setInputMode(null)
+    clearMessages()
   }
 
   const isRecording = voiceState === "recording"
   const isProcessing = voiceState === "processing"
   const isResponding = voiceState === "responding"
-
-  const displayText = inputMode === "voice" ? transcript : inputMode === "text" ? textInput : null
-  const displayResponse = inputMode === "voice" ? response : inputMode === "text" ? textResponse : null
-  const displayLabel = inputMode === "voice" ? "YOU SAID" : "YOU TYPED"
 
   return (
     <motion.div
@@ -154,7 +243,7 @@ export default function VoicePage() {
           Converse
         </h1>
         <p className={`text-sm ${TRANSITION} ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-          Speak or type your command — NEXUS will handle the rest
+          Talk to NEXUS — speak or type, we handle the rest
         </p>
       </div>
 
@@ -281,82 +370,95 @@ export default function VoicePage() {
             </motion.p>
           )}
 
-          <AnimatePresence>
-            {(displayText || displayResponse) && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="w-full space-y-3"
-              >
-                {displayText && (
-                  <div className={`p-4 rounded-2xl ${TRANSITION} ${
-                    isDark
-                      ? "bg-white/5 border border-white/10"
-                      : "bg-red-50 border border-red-200 shadow-sm shadow-red-100"
-                  }`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      {inputMode === "voice"
-                        ? <Mic size={12} className={`${TRANSITION} ${isDark ? "text-slate-500" : "text-red-400"}`} />
-                        : <MessageSquare size={12} className={`${TRANSITION} ${isDark ? "text-slate-500" : "text-red-400"}`} />
-                      }
-                      <p className={`text-xs font-semibold tracking-wider ${TRANSITION} ${isDark ? "text-slate-500" : "text-red-400"}`}>
-                        {displayLabel}
-                      </p>
-                    </div>
-                    <p className={`text-sm leading-relaxed ${TRANSITION} ${isDark ? "text-slate-200" : "text-slate-800"}`}>
-                      {displayText}
-                    </p>
-                  </div>
-                )}
-
-                {(displayResponse || textLoading) && (
-                  <div className={`p-4 rounded-2xl ${TRANSITION} ${
-                    isDark
-                      ? "bg-red-950/30 border border-red-900/40 shadow-lg shadow-red-950/20"
-                      : "bg-gradient-to-br from-red-50 to-white border border-red-200 shadow-md shadow-red-100/60"
-                  }`}>
-                    <p className={`text-xs font-semibold tracking-wider mb-2 ${TRANSITION} ${isDark ? "text-red-400" : "text-red-600"}`}>
-                      NEXUS
-                    </p>
-                    {textLoading ? (
-                      <div className="flex items-center gap-2">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          className={`w-4 h-4 border-2 border-t-transparent rounded-full ${TRANSITION} ${
-                            isDark ? "border-red-500" : "border-red-600"
-                          }`}
-                        />
-                        <p className={`text-sm ${TRANSITION} ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                          Processing...
+          {(messages.length > 0 || textLoading) && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="w-full space-y-3"
+            >
+              {messages.map((msg) => (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`p-4 rounded-2xl ${TRANSITION} ${
+                    msg.type === "user"
+                      ? isDark
+                        ? "bg-white/5 border border-white/10"
+                        : "bg-red-50 border border-red-200 shadow-sm shadow-red-100"
+                      : isDark
+                        ? "bg-red-950/30 border border-red-900/40 shadow-lg shadow-red-950/20"
+                        : "bg-gradient-to-br from-red-50 to-white border border-red-200 shadow-md shadow-red-100/60"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    {msg.type === "user" ? (
+                      <>
+                        {msg.inputMode === "voice"
+                          ? <Mic size={12} className={`${TRANSITION} ${isDark ? "text-slate-500" : "text-red-400"}`} />
+                          : <MessageSquare size={12} className={`${TRANSITION} ${isDark ? "text-slate-500" : "text-red-400"}`} />
+                        }
+                        <p className={`text-xs font-semibold tracking-wider ${TRANSITION} ${isDark ? "text-slate-500" : "text-red-400"}`}>
+                          {msg.inputMode === "voice" ? "YOU SAID" : "YOU TYPED"}
                         </p>
-                      </div>
+                      </>
                     ) : (
-                      <p className={`text-sm leading-relaxed ${TRANSITION} ${isDark ? "text-slate-200" : "text-slate-700"}`}>
-                        {displayResponse}
+                      <p className={`text-xs font-semibold tracking-wider ${TRANSITION} ${isDark ? "text-red-400" : "text-red-600"}`}>
+                        NEXUS
                       </p>
                     )}
                   </div>
-                )}
+                  {msg.type === "user" ? (
+                    <p className={`text-sm leading-relaxed ${TRANSITION} ${isDark ? "text-slate-200" : "text-slate-800"}`}>
+                      {msg.content}
+                    </p>
+                  ) : (
+                    <NexusResponse content={msg.content} isDark={isDark} />
+                  )}
+                </motion.div>
+              ))}
 
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleClear}
-                    className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-xl ${TRANSITION} ${
-                      isDark
-                        ? "text-slate-500 hover:text-slate-300 hover:bg-white/5"
-                        : "text-red-400 hover:text-red-600 hover:bg-red-50"
-                    }`}
-                  >
-                    <RotateCcw size={12} />
-                    Clear
-                  </button>
+              {textLoading && (
+                <div className={`p-5 rounded-2xl ${TRANSITION} ${
+                  isDark
+                    ? "bg-red-950/30 border border-red-900/40 shadow-lg shadow-red-950/20"
+                    : "bg-gradient-to-br from-red-50 to-white border border-red-200 shadow-md shadow-red-100/60"
+                }`}>
+                  <p className={`text-xs font-semibold tracking-wider mb-3 ${TRANSITION} ${isDark ? "text-red-400" : "text-red-600"}`}>
+                    NEXUS
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className={`w-4 h-4 border-2 border-t-transparent rounded-full ${TRANSITION} ${
+                        isDark ? "border-red-500" : "border-red-600"
+                      }`}
+                    />
+                    <p className={`text-sm ${TRANSITION} ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                      Processing...
+                    </p>
+                  </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleClear}
+                  className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-xl ${TRANSITION} ${
+                    isDark
+                      ? "text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                      : "text-red-400 hover:text-red-600 hover:bg-red-50"
+                  }`}
+                >
+                  <RotateCcw size={12} />
+                  Clear
+                </button>
+              </div>
+            </motion.div>
+          )}
         </div>
       </motion.div>
 

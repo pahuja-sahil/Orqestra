@@ -3,6 +3,7 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.logger import logger
+from app.services.vector_service import ingest_document
 from app.services.converse_service import transcribe_audio, synthesize_speech, process_command
 from app.services.auth_service import verify_token
 import json
@@ -199,3 +200,27 @@ async def process_text(request: Request):
         raise HTTPException(status_code=400, detail="No text provided")
     response = await process_command(text, source="text")
     return {"response": response}
+
+
+@router.post("/ingest")
+async def ingest_docs(request: Request):
+    """
+    Ingests API documentation into ChromaDB.
+    Send raw text of any API docs.
+    """
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth_header.replace("Bearer ", "")
+    if not verify_token(token):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    body = await request.json()
+    text = body.get("text", "")
+    source = body.get("source", "manual")
+
+    if not text:
+        raise HTTPException(status_code=400, detail="No text provided")
+
+    chunks = await ingest_document(text=text, source=source)
+    return {"message": f"Ingested {chunks} chunks", "source": source}
