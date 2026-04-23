@@ -4,6 +4,7 @@ from groq import Groq
 from app.core.config import settings
 from app.core.logger import logger
 from app.agents.rag_agent import run_agent
+from app.agents.nexus_agent import run_nexus_agent
 
 groq_client = Groq(api_key=settings.GROQ_API_KEY)
 
@@ -69,16 +70,12 @@ async def synthesize_speech(text: str) -> bytes:
         return None
 
 
+
 async def process_command(text: str, source: str = "voice") -> str:
-    """
-    Main entry point for processing user commands.
-    Routes through the RAG agent for intelligent responses.
-    """
     if not text:
         return "I didn't catch that. Could you try again?"
-
     try:
-        response = await run_agent(text, source=source)
+        response = await run_nexus_agent(text, source=source)
         return response
     except Exception as e:
         logger.error("agent_failed", error=str(e))
