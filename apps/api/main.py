@@ -6,7 +6,7 @@ from app.core.logger import setup_logging, logger
 from app.core.database import check_database_connection
 from app.routers import auth
 from app.routers import converse
-
+from app.routers import integrations
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -95,3 +95,4 @@ async def health_check():
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(converse.router, prefix="/api/converse", tags=["Converse"])
+app.include_router(integrations.router, prefix="/api/integrations", tags=["Integrations"])

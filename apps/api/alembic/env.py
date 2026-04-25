@@ -15,6 +15,8 @@ from app.core.database import Base
 
 # Import models here so Alembic detects them
 from app.models.user import User
+from app.models.integration import Integration
+from app.core.database import Base
 
 config = context.config
 

@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     # ----------------------------------------
     # REDIS
     # ----------------------------------------
-    REDIS_URL: str = "redis://redis:6379"
+    REDIS_URL: str = "redis://localhost:6379"
 
     # ----------------------------------------
     # AUTH
@@ -75,7 +75,8 @@ class Settings(BaseSettings):
     # ----------------------------------------
     # EMAIL
     # ----------------------------------------
-    RESEND_API_KEY: Optional[str] = None
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "nexus@resend.dev"
 
     class Config:
         env_file = ".env"
