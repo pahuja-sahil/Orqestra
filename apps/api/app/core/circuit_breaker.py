@@ -12,7 +12,7 @@ class CircuitState(str, Enum):
 
 
 FAILURE_THRESHOLD = 3
-RECOVERY_TIMEOUT = 30
+RECOVERY_TIMEOUT = 600
 redis_client = None
 
 

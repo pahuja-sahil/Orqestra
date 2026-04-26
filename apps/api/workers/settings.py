@@ -14,4 +14,4 @@ class WorkerSettings:
     ]
     redis_settings = REDIS_SETTINGS
     max_jobs = 10
-    job_timeout = 300
+    job_timeout = 600
