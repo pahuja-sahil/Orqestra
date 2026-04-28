@@ -174,6 +174,7 @@ async def voice_websocket(websocket: WebSocket):
                         "type": "complete"
                     }))
 
+
                 except Exception as e:
                     logger.error("voice_processing_error", error=str(e))
                     await websocket.send_text(json.dumps({
@@ -181,6 +182,11 @@ async def voice_websocket(websocket: WebSocket):
                         "message": "Processing failed. Please try again."
                     }))
 
+            elif msg_type == "ping":
+                await websocket.send_text(json.dumps({
+                    "type": "pong"
+                }))
+    
     except WebSocketDisconnect:
         logger.info("websocket_disconnected")
     except Exception as e:

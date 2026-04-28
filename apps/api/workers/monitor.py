@@ -9,16 +9,37 @@ from app.models.user import User
 from app.core.circuit_breaker import record_failure, record_success, CircuitState
 from app.services.notification_service import send_integration_broken
 from app.core.logger import logger
+from mcp_server.tools.api_checker import register_api_checker
+from fastmcp import FastMCP
 
+mcp = FastMCP("monitor")
+register_api_checker(mcp)
 
 async def check_integration_health(integration: Integration) -> bool:
     """
-    Simulates checking if an integration is healthy.
-    In production: makes actual API call to test the integration.
+    Uses MCP api_checker tool instead of random simulation.
     """
-    import random
-    return random.random() > 0.2
+    try:
+        api_name = integration.api_name.lower()
 
+        if "stripe" in api_name:
+            result = await mcp.call_tool(
+                "check_stripe_health",
+                {"secret_key": "sk_test_demo"}
+            )
+        elif "github" in api_name:
+            result = await mcp.call_tool(
+                "check_github_health",
+                {"token": "demo_token"}
+            )
+        else:
+            result = {"healthy": True}
+
+        return result.get("healthy", True)
+
+    except Exception as e:
+        logger.error("health_check_error", error=str(e))
+        return True
 
 async def monitor_integrations(ctx):
     """

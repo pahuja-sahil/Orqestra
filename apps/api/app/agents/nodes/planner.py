@@ -1,15 +1,32 @@
 import json
 from langchain_google_genai import ChatGoogleGenerativeAI
-from app.agents.state import NexusState
+from langchain_groq import ChatGroq
 from app.core.config import settings
 from app.core.logger import logger
 
-llm = ChatGoogleGenerativeAI(
+gemini_llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     google_api_key=settings.GEMINI_API_KEY,
     temperature=0.2
 )
 
+groq_llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    api_key=settings.GROQ_API_KEY,
+    temperature=0.2
+)
+
+
+async def get_llm_response(prompt: str) -> str:
+    try:
+        response = await gemini_llm.ainvoke(prompt)
+        return response.content
+    except Exception as e:
+        if any(x in str(e) for x in ["429", "RESOURCE_EXHAUSTED", "quota"]):
+            logger.warning("gemini_rate_limited_falling_back_to_groq")
+            response = await groq_llm.ainvoke(prompt)
+            return response.content
+        raise
 
 async def planner_node(state: NexusState) -> NexusState:
     """
@@ -41,8 +58,8 @@ If this is not an API integration request, still return JSON:
 }}"""
 
     try:
-        response = await llm.ainvoke(prompt)
-        content = response.content.strip()
+        content = await get_llm_response(prompt)
+        content = content.strip()
 
         if "```" in content:
             content = content.split("```")[1]

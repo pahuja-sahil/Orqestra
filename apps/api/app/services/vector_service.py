@@ -16,7 +16,7 @@ chroma_client = chromadb.PersistentClient(
 # Embeddings convert text to vectors (numbers)
 # Similar text → similar numbers → easy to search
 embeddings = GoogleGenerativeAIEmbeddings(
-    model="models/text-embedding-005",
+    model="models/embedding-001",
     google_api_key=settings.GEMINI_API_KEY
 )
 

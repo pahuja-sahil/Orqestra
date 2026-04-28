@@ -39,78 +39,90 @@ export function useVoiceRecording(
     !!navigator.mediaDevices &&
     !!window.MediaRecorder
 
-  const connectWebSocket = useCallback((): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const ws = new WebSocket("ws://localhost:8000/api/converse/ws")
-      wsRef.current = ws
+const connectWebSocket = useCallback((): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket("ws://localhost:8000/api/converse/ws")
+    wsRef.current = ws
 
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
-          type: "auth",
-          token: accessToken
-        }))
+    // Keepalive ping every 15 seconds
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "ping" }))
       }
+    }, 15000)
 
-      ws.onmessage = async (event) => {
-        const data = JSON.parse(event.data)
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        type: "auth",
+        token: accessToken
+      }))
+    }
 
-        switch (data.type) {
-          case "auth_ok":
-            resolve()
-            break
+    ws.onmessage = async (event) => {
+      const data = JSON.parse(event.data)
 
-          case "chunk_received":
-            break
+      switch (data.type) {
+        case "auth_ok":
+          resolve()
+          break
 
-          case "processing":
-            setVoiceState("processing")
-            setProcessingStage(data.stage as ProcessingStage)
-            break
+        case "chunk_received":
+          break
 
-          case "transcript":
-            setTranscript(data.text)
-            onTranscript?.(data.text)
-            break
+        case "pong":
+          break
 
-          case "response":
-            setResponse(data.text)
-            setVoiceState("responding")
-            break
+        case "processing":
+          setVoiceState("processing")
+          setProcessingStage(data.stage as ProcessingStage)
+          break
 
-          case "audio":
-            const audioBytes = atob(data.data)
-            const audioArray = new Uint8Array(audioBytes.length)
-            for (let i = 0; i < audioBytes.length; i++) {
-              audioArray[i] = audioBytes.charCodeAt(i)
-            }
-            const audioBlob = new Blob([audioArray], { type: "audio/mpeg" })
-            const audioUrl = URL.createObjectURL(audioBlob)
-            const audio = new Audio(audioUrl)
-            audio.play()
-            break
+        case "transcript":
+          setTranscript(data.text)
+          onTranscript?.(data.text)
+          break
 
-          case "complete":
-            setVoiceState("idle")
-            setProcessingStage(null)
-            break
+        case "response":
+          setResponse(data.text)
+          setVoiceState("responding")
+          break
 
-          case "error":
-            setError(data.message)
-            setVoiceState("error")
-            setProcessingStage(null)
-            break
-        }
+        case "audio":
+          const audioBytes = atob(data.data)
+          const audioArray = new Uint8Array(audioBytes.length)
+          for (let i = 0; i < audioBytes.length; i++) {
+            audioArray[i] = audioBytes.charCodeAt(i)
+          }
+          const audioBlob = new Blob([audioArray], { type: "audio/mpeg" })
+          const audioUrl = URL.createObjectURL(audioBlob)
+          const audio = new Audio(audioUrl)
+          audio.play()
+          break
+
+        case "complete":
+          setVoiceState("idle")
+          setProcessingStage(null)
+          break
+
+        case "error":
+          setError(data.message)
+          setVoiceState("error")
+          setProcessingStage(null)
+          break
       }
+    }
 
-      ws.onerror = () => {
-        reject(new Error("WebSocket connection failed"))
-      }
+    ws.onerror = () => {
+      clearInterval(pingInterval)
+      reject(new Error("WebSocket connection failed"))
+    }
 
-      ws.onclose = () => {
-        wsRef.current = null
-      }
-    })
-  }, [accessToken, onTranscript])
+    ws.onclose = () => {
+      clearInterval(pingInterval)
+      wsRef.current = null
+    }
+  })
+}, [accessToken, onTranscript])
 
   const startRecording = useCallback(async () => {
     if (!isSupported) {

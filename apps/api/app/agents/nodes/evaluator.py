@@ -3,15 +3,32 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.agents.state import NexusState
 from app.core.config import settings
 from app.core.logger import logger
+from langchain_groq import ChatGroq
+from app.core.config import settings
 
-llm = ChatGoogleGenerativeAI(
+gemini_llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     google_api_key=settings.GEMINI_API_KEY,
     temperature=0.1
 )
 
-QUALITY_THRESHOLD = 7
-MAX_RETRIES = 3
+groq_llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    api_key=settings.GROQ_API_KEY,
+    temperature=0.1
+)
+
+
+async def get_llm_response(prompt: str) -> str:
+    try:
+        response = await gemini_llm.ainvoke(prompt)
+        return response.content
+    except Exception as e:
+        if any(x in str(e) for x in ["429", "RESOURCE_EXHAUSTED", "quota"]):
+            logger.warning("gemini_rate_limited_falling_back_to_groq")
+            response = await groq_llm.ainvoke(prompt)
+            return response.content
+        raise
 
 
 async def evaluator_node(state: NexusState) -> NexusState:
@@ -48,8 +65,8 @@ SCORE: [number 1-10]
 NOTES: [specific issues to fix, or "Excellent" if score >= 8]"""
 
     try:
-        response = await llm.ainvoke(prompt)
-        content = response.content.strip()
+        content = await get_llm_response(prompt)
+        content = content.strip()
 
         score_match = re.search(r"SCORE:\s*(\d+)", content)
         notes_match = re.search(r"NOTES:\s*(.+)", content, re.DOTALL)
@@ -77,12 +94,14 @@ NOTES: [specific issues to fix, or "Excellent" if score >= 8]"""
 
 
 def should_retry(state: NexusState) -> str:
-    """
-    Decision function for conditional edge.
-    Returns "retry" or "end"
-    """
     score = state.get("quality_score", 7)
     retries = state.get("retry_count", 0)
+    error = state.get("error", "")
+
+    # Never retry on rate limit or API errors
+    if error and any(x in str(error) for x in ["429", "RESOURCE_EXHAUSTED", "quota"]):
+        logger.warning("skipping_retry_rate_limited")
+        return "end"
 
     if score < QUALITY_THRESHOLD and retries < MAX_RETRIES:
         state["retry_count"] = retries + 1
