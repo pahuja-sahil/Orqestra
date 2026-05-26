@@ -7,12 +7,15 @@
   to { background-position: 350% 50%, 350% 50%; }
 }
 
-*, *::before, *::after {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 300ms;
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-button, a {
-  transition-duration: 150ms;
+html {
+  transition: background-color 400ms ease, color 400ms ease;
+}
+
+.theme-transition {
+  transition: background-color 400ms ease, border-color 400ms ease, color 400ms ease, box-shadow 400ms ease;
 }

@@ -7,8 +7,7 @@ export default function DashboardPage() {
   const { isDark, toggle } = useThemeStore()
 
   return (
-    <div
-      className="min-h-screen"
+    <div className="min-h-screen theme-transition"
       style={{
         background: isDark
           ? "radial-gradient(ellipse at 20% 50%, rgba(76,29,149,0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(46,16,101,0.05) 0%, transparent 40%), #09090b"
@@ -17,21 +16,11 @@ export default function DashboardPage() {
     >
       <Sidebar />
       <div className="ml-64 min-h-screen">
-        <header
-          className={`sticky top-0 z-30 flex items-center justify-end px-6 py-4 ${
-            isDark
-              ? "bg-zinc-950/80 backdrop-blur-xl"
-              : "bg-[#FDFBF7]/80 backdrop-blur-xl"
-          }`}
-        >
+        <header className="sticky top-0 z-30 flex items-center justify-end px-6 py-4 theme-transition dark:bg-zinc-950/80 bg-[#FDFBF7]/80 backdrop-blur-xl">
           <button
             onClick={toggle}
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            className={`p-2.5 rounded-full border-2 ${
-              isDark
-                ? "border-violet-800 bg-violet-950/50 text-violet-400 hover:bg-violet-900/60 hover:border-violet-600"
-                : "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:border-violet-400"
-            }`}
+            className="p-2.5 rounded-full border-2 theme-transition dark:border-violet-800 border-violet-300 dark:bg-violet-950/50 bg-violet-50 dark:text-violet-400 text-violet-700 hover:dark:bg-violet-900/60 hover:bg-violet-100 hover:dark:border-violet-600 hover:border-violet-400"
           >
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
           </button>

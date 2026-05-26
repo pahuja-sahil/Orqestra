@@ -123,7 +123,7 @@ export default function TwoFactorPage() {
             <motion.p
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-violet-400 text-xs text-center mb-3"
+              className="text-red-400 text-xs text-center mb-3"
             >
               {error}
             </motion.p>

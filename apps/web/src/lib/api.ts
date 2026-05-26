@@ -13,10 +13,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true
       try {
-        const res = await axios.post(
-          'http://localhost:8000/api/auth/refresh',
+        const res = await api.post(
+          '/api/auth/refresh',
           {},
-          { withCredentials: true }
         )
         const newToken = res.data.access_token
         useAuthStore.getState().setAccessToken(newToken)
