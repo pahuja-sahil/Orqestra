@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.core.logger import logger
 from app.models.integration import Integration
 from app.services.auth_service import verify_token
-from app.agents.nexus_agent import run_nexus_agent
+from app.agents.orqestra_agent import run_orqestra_agent
 import uuid
 
 router = APIRouter()
@@ -44,7 +44,9 @@ async def list_integrations(
             "circuit_state": i.circuit_state,
             "failure_count": i.failure_count,
             "last_checked": i.last_checked,
-            "created_at": i.created_at
+            "created_at": i.created_at,
+            "repo_url": i.repo_url,
+            "file_path": i.file_path,
         }
         for i in integrations
     ]
@@ -65,7 +67,7 @@ async def create_integration(
         raise HTTPException(status_code=400, detail="Name required")
 
     prompt = f"Create integration: {name}. {description}"
-    generated_code = await run_nexus_agent(prompt, source="text")
+    generated_code = await run_orqestra_agent(prompt, source="text")
 
     from sqlalchemy.dialects.postgresql import UUID as PGUUID
     integration = Integration(

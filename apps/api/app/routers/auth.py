@@ -43,11 +43,12 @@ def set_refresh_token_cookie(response: Response, token: str):
 async def google_login():
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
-        "redirect_uri": f"http://localhost:8000/api/auth/google/callback",
+        "redirect_uri": f"{settings.BACKEND_URL}/api/auth/google/callback",
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
     }
+    logger.info("google_login_initiated", redirect_uri=params["redirect_uri"])
     query = "&".join(f"{k}={v}" for k, v in params.items())
     return RedirectResponse(f"{GOOGLE_AUTH_URL}?{query}")
 

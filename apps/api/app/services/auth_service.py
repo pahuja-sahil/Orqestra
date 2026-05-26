@@ -54,7 +54,7 @@ def verify_totp(secret: str, code: str) -> bool:
 
 def generate_qr_code(secret: str, email: str) -> str:
     totp = pyotp.TOTP(secret)
-    uri = totp.provisioning_uri(name=email, issuer_name="NEXUS")
+    uri = totp.provisioning_uri(name=email, issuer_name="ORQESTRA")
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(uri)
     qr.make(fit=True)

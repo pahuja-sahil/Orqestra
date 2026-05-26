@@ -8,8 +8,8 @@ interface LampContainerProps {
 }
 
 export function LampContainer({ children, className, isDark = true }: LampContainerProps) {
-  const bg = isDark ? "bg-[#050008]" : "bg-[#fafafa]"
-  const maskBg = isDark ? "#050008" : "#fafafa"
+  const bg = isDark ? "bg-zinc-950" : "bg-zinc-50"
+  const maskBg = isDark ? "#09090b" : "#fafafa"
 
   return (
     <div
@@ -28,8 +28,8 @@ export function LampContainer({ children, className, isDark = true }: LampContai
             "absolute inset-auto right-1/2 h-56 overflow-visible w-[28rem]",
             "[--conic-position:from_70deg_at_center_top]",
             isDark
-              ? "bg-gradient-conic from-[#8b0000] via-transparent to-transparent"
-              : "bg-gradient-conic from-red-300 via-transparent to-transparent",
+              ? "bg-gradient-conic from-[#6d28d9] via-transparent to-transparent"
+              : "bg-gradient-conic from-violet-300 via-transparent to-transparent",
           )}
         >
           <div
@@ -50,8 +50,8 @@ export function LampContainer({ children, className, isDark = true }: LampContai
             "absolute inset-auto left-1/2 h-56 w-[28rem] overflow-visible",
             "[--conic-position:from_290deg_at_center_top]",
             isDark
-              ? "bg-gradient-conic from-transparent via-transparent to-[#8b0000]"
-              : "bg-gradient-conic from-transparent via-transparent to-red-300"
+              ? "bg-gradient-conic from-transparent via-transparent to-[#6d28d9]"
+              : "bg-gradient-conic from-transparent via-transparent to-violet-300"
           )}
         >
           <div
@@ -72,7 +72,7 @@ export function LampContainer({ children, className, isDark = true }: LampContai
         <div
           className={cn(
             "absolute inset-auto z-50 h-36 w-[26rem] -translate-y-1/2 rounded-full opacity-50 blur-3xl transition-colors duration-500",
-            isDark ? "bg-[#8b0000]" : "bg-red-200"
+            isDark ? "bg-[#6d28d9]" : "bg-violet-200"
           )}
         />
 
@@ -82,7 +82,7 @@ export function LampContainer({ children, className, isDark = true }: LampContai
           transition={{ duration: 2, ease: "easeInOut" }}
           className={cn(
             "absolute inset-auto z-30 h-36 w-56 -translate-y-[6rem] rounded-full blur-2xl transition-colors duration-500",
-            isDark ? "bg-[#dc143c]" : "bg-red-300"
+            isDark ? "bg-[#8b5cf6]" : "bg-violet-300"
           )}
         />
 
@@ -92,7 +92,7 @@ export function LampContainer({ children, className, isDark = true }: LampContai
           transition={{ duration: 2, ease: "easeInOut" }}
           className={cn(
             "absolute inset-auto z-50 h-0.5 w-[26rem] -translate-y-[7rem] transition-colors duration-500",
-            isDark ? "bg-[#dc143c]" : "bg-red-400"
+            isDark ? "bg-[#8b5cf6]" : "bg-violet-400"
           )}
         />
 

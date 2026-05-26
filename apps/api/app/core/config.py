@@ -23,8 +23,9 @@ class Settings(BaseSettings):
     # ----------------------------------------
     ENVIRONMENT: str = "development"
     SECRET_KEY: str
-    BACKEND_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:5173"
+    BACKEND_URL: str = "http://localhost"
+    FRONTEND_URL: str = "http://localhost"
+    JINA_API_KEY: str = ""
     # No default = REQUIRED
     # Missing = app won't start
 
@@ -49,16 +50,19 @@ class Settings(BaseSettings):
     NEXTAUTH_SECRET: str
     NEXTAUTH_URL: str = "http://localhost:3000"
     NEXT_PUBLIC_API_URL: str = "http://localhost/api"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
 
     # ----------------------------------------
     # LLM — Free providers
     # ----------------------------------------
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
-    ELEVENLABS_API_KEY: str = ""
-    ELEVENLABS_VOICE_ID: str = "21m00Tcm4TlvDq8ikWAM"
+    OPENROUTER_API_KEY: str = ""
+    DEEPGRAM_API_KEY: str = ""
+    DEEPGRAM_VOICE_MODEL: str = "aura-asteria-en"
 
     # Active LLM provider — easy to switch
     LLM_PROVIDER: str = "gemini"
@@ -68,15 +72,15 @@ class Settings(BaseSettings):
     # ----------------------------------------
     # MONITORING
     # ----------------------------------------
-    LANGFUSE_PUBLIC_KEY: Optional[str] = None
-    LANGFUSE_SECRET_KEY: Optional[str] = None
+    LANGFUSE_PUBLIC_KEY: str = ""
+    LANGFUSE_SECRET_KEY: str = ""
     LANGFUSE_HOST: str = "https://cloud.langfuse.com"
 
     # ----------------------------------------
     # EMAIL
     # ----------------------------------------
     RESEND_API_KEY: str = ""
-    RESEND_FROM_EMAIL: str = "nexus@resend.dev"
+    RESEND_FROM_EMAIL: str = "orqestra@resend.dev"
 
     class Config:
         env_file = ".env"

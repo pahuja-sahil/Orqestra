@@ -8,6 +8,9 @@ import OverviewPage from './pages/dashboard/OverviewPage'
 import SettingsPage from './pages/dashboard/SettingsPage'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import ConversePage from './pages/dashboard/ConversePage'
+import IntegrationsPage from './pages/dashboard/IntegrationsPage'
+import AgentsPage from './pages/dashboard/AgentsPage'
+import LogsPage from './pages/dashboard/LogsPage'
 
 function App() {
   return (
@@ -24,6 +27,9 @@ function App() {
           <Route index element={<OverviewPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="converse" element={<ConversePage />} />
+          <Route path="integrations" element={<IntegrationsPage />} />
+          <Route path="agents" element={<AgentsPage />} />
+          <Route path="logs" element={<LogsPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

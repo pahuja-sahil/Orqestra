@@ -1,9 +1,9 @@
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.core.config import settings
 from app.core.logger import logger
+import httpx
 
 # Initialize ChromaDB client
 # Stores data in a local folder called "chroma_db"
@@ -12,13 +12,41 @@ chroma_client = chromadb.PersistentClient(
     settings=ChromaSettings(anonymized_telemetry=False)
 )
 
-# Initialize Gemini embeddings
-# Embeddings convert text to vectors (numbers)
-# Similar text → similar numbers → easy to search
-embeddings = GoogleGenerativeAIEmbeddings(
-    model="models/embedding-001",
-    google_api_key=settings.GEMINI_API_KEY
-)
+async def get_jina_embedding(text: str) -> list[float]:
+    """Get embedding from Jina v4 API."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            "https://api.jina.ai/v1/embeddings",
+            headers={
+                "Authorization": f"Bearer {settings.JINA_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "jina-embeddings-v3",
+                "task": "retrieval.passage",
+                "input": [text]
+            }
+        )
+        data = response.json()
+        return data["data"][0]["embedding"]
+
+async def get_jina_embeddings_batch(texts: list[str]) -> list[list[float]]:
+    """Get embeddings for multiple texts."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            "https://api.jina.ai/v1/embeddings",
+            headers={
+                "Authorization": f"Bearer {settings.JINA_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "jina-embeddings-v3",
+                "task": "retrieval.passage",
+                "input": texts
+            }
+        )
+        data = response.json()
+        return [item["embedding"] for item in data["data"]]
 
 def get_or_create_collection(name: str):
     """Get existing collection or create new one."""
@@ -27,18 +55,11 @@ def get_or_create_collection(name: str):
     except Exception:
         return chroma_client.create_collection(name=name)
 
-
 async def ingest_document(
     text: str,
     source: str,
     collection_name: str = "api_docs"
 ) -> int:
-    """
-    Takes raw text → splits into chunks → 
-    embeds each chunk → stores in ChromaDB
-    
-    Returns number of chunks stored.
-    """
     try:
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
@@ -50,7 +71,8 @@ async def ingest_document(
 
         collection = get_or_create_collection(collection_name)
 
-        embedded = await embeddings.aembed_documents(chunks)
+        # NEW: use Jina batch embeddings
+        embedded = await get_jina_embeddings_batch(chunks)
 
         ids = [f"{source}_{i}" for i in range(len(chunks))]
 
@@ -62,7 +84,8 @@ async def ingest_document(
             documents=chunks,
             embeddings=embedded,
             ids=ids,
-            metadatas=[{"source": source, "chunk": i} for i in range(len(chunks))]
+            metadatas=[{"source": source, "chunk": i}
+                       for i in range(len(chunks))]
         )
 
         logger.info("document_ingested", chunks=len(chunks), source=source)
@@ -72,17 +95,11 @@ async def ingest_document(
         logger.error("ingestion_failed", error=str(e))
         raise
 
-
 async def retrieve_relevant_chunks(
     query: str,
     collection_name: str = "api_docs",
     n_results: int = 5
 ) -> list[str]:
-    """
-    Takes a question → converts to embedding →
-    finds most similar chunks in ChromaDB →
-    returns relevant text
-    """
     try:
         collection = get_or_create_collection(collection_name)
 
@@ -90,7 +107,23 @@ async def retrieve_relevant_chunks(
             logger.warning("collection_empty", name=collection_name)
             return []
 
-        query_embedding = await embeddings.aembed_query(query)
+        # NEW: use Jina for query embedding
+        # task="retrieval.query" for questions (different from passage)
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                "https://api.jina.ai/v1/embeddings",
+                headers={
+                    "Authorization": f"Bearer {settings.JINA_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "jina-embeddings-v3",
+                    "task": "retrieval.query",
+                    "input": [query]
+                }
+            )
+            data = response.json()
+            query_embedding = data["data"][0]["embedding"]
 
         results = collection.query(
             query_embeddings=[query_embedding],
@@ -104,3 +137,17 @@ async def retrieve_relevant_chunks(
     except Exception as e:
         logger.error("retrieval_failed", error=str(e))
         return []
+
+
+async def get_relevant_docs(api_name: str, top_k: int = 3) -> str:
+    """
+    Get relevant API documentation for a given API name.
+    Used by repair agent to get context.
+    """
+    query = f"{api_name} API documentation authentication endpoints"
+    chunks = await retrieve_relevant_chunks(query, n_results=top_k)
+    
+    if not chunks:
+        return f"No documentation found for {api_name}"
+    
+    return "\n\n---\n\n".join(chunks)

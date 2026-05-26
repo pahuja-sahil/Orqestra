@@ -15,11 +15,11 @@ async def send_integration_broken(
         resend.Emails.send({
             "from": settings.RESEND_FROM_EMAIL,
             "to": user_email,
-            "subject": f"⚠️ NEXUS: Your {api_name} integration needs attention",
+            "subject": f"⚠️ ORQESTRA: Your {api_name} integration needs attention",
             "html": f"""
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
-                    <h1 style="color: #ef4444; margin: 0 0 8px;">⚡ NEXUS</h1>
+                    <h1 style="color: #ef4444; margin: 0 0 8px;">⚡ ORQESTRA</h1>
                     <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
                 </div>
                 
@@ -35,7 +35,7 @@ async def send_integration_broken(
                         <strong>Status:</strong> Repair in progress...
                     </div>
                     
-                    <p>NEXUS is working on fixing this automatically. 
+                    <p>ORQESTRA is working on fixing this automatically. 
                     You'll receive another email once it's resolved.</p>
                 </div>
             </div>
@@ -58,11 +58,11 @@ async def send_integration_fixed(
         resend.Emails.send({
             "from": settings.RESEND_FROM_EMAIL,
             "to": user_email,
-            "subject": f"✅ NEXUS: Your {api_name} integration has been fixed",
+            "subject": f"✅ ORQESTRA: Your {api_name} integration has been fixed",
             "html": f"""
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
-                    <h1 style="color: #ef4444; margin: 0 0 8px;">⚡ NEXUS</h1>
+                    <h1 style="color: #ef4444; margin: 0 0 8px;">⚡ ORQESTRA</h1>
                     <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
                 </div>
                 
@@ -78,7 +78,7 @@ async def send_integration_fixed(
                         <strong>Status:</strong> Healthy ✅
                     </div>
                     
-                    <p>No action required on your part. NEXUS handled everything automatically.</p>
+                    <p>No action required on your part. ORQESTRA handled everything automatically.</p>
                 </div>
             </div>
             """
@@ -100,20 +100,20 @@ async def send_integration_failed_repair(
         resend.Emails.send({
             "from": settings.RESEND_FROM_EMAIL,
             "to": user_email,
-            "subject": f"🚨 NEXUS: Manual attention required for {api_name}",
+            "subject": f"🚨 ORQESTRA: Manual attention required for {api_name}",
             "html": f"""
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
-                    <h1 style="color: #ef4444; margin: 0 0 8px;">⚡ NEXUS</h1>
+                    <h1 style="color: #ef4444; margin: 0 0 8px;">⚡ ORQESTRA</h1>
                     <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
                 </div>
                 
                 <div style="padding: 24px; border: 1px solid #fca5a5; border-radius: 12px; margin-top: 16px;">
                     <h2 style="color: #dc2626;">Manual Attention Required 🚨</h2>
                     <p>Hi <strong>{user_name}</strong>,</p>
-                    <p>NEXUS attempted to automatically repair your 
+<p>ORQESTRA attempted to automatically repair your 
                     <strong>{integration_name}</strong> ({api_name}) integration 
-                    but was unable to fix it after 3 attempts.</p>
+                    but was unable to fix it after 4 attempts.</p>
                     
                     <div style="background: #fef2f2; padding: 16px; border-radius: 8px; border-left: 4px solid #dc2626;">
                         <strong>Integration:</strong> {integration_name}<br/>
@@ -121,10 +121,10 @@ async def send_integration_failed_repair(
                         <strong>Status:</strong> Repair Failed — Manual Review Needed
                     </div>
                     
-                    <p>Please log in to your NEXUS dashboard to review and fix this integration manually.</p>
-                    <a href="http://localhost:5173/dashboard" 
+                    <p>Please log in to your ORQESTRA dashboard to review and fix this integration manually.</p>
+                    <a href="{settings.FRONTEND_URL}/dashboard" 
                        style="background: #dc2626; color: white; padding: 12px 24px; 
-                              border-radius: 8px; text-decoration: none; display: inline-block; margin-top: 8px;">
+                               border-radius: 8px; text-decoration: none; display: inline-block; margin-top: 8px;">
                         Open Dashboard
                     </a>
                 </div>

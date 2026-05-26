@@ -24,10 +24,8 @@ FROM base AS dependencies
 COPY package.json package-lock.json* ./
 
 # Install dependencies
-RUN npm ci
-# npm ci = clean install
-# Faster than npm install, uses exact versions from lockfile
-# Always use npm ci in Docker, never npm install
+RUN npm install
+# Using npm install here to allow building even if lockfile is slightly out of sync
 
 # ============================================
 # STAGE 3: DEVELOPMENT
@@ -35,11 +33,23 @@ RUN npm ci
 # ============================================
 FROM dependencies AS development
 
-# Copy all code
 COPY . .
 
-# Expose port 3000
 EXPOSE 3000
 
-# Start Next.js in development mode
 CMD ["npm", "run", "dev"]
+
+# ============================================
+# STAGE 4: PRODUCTION
+# Optimized for production deployment
+# ============================================
+FROM dependencies AS production
+
+COPY . .
+
+RUN npm run build
+
+EXPOSE 3000
+
+ENV NODE_ENV=production
+CMD ["npm", "start"]

@@ -38,11 +38,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#050008]">
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full"
+          className="w-8 h-8 border-2 border-violet-600 border-t-transparent rounded-full"
         />
       </div>
     )

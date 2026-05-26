@@ -24,6 +24,15 @@ class Integration(Base):
 
     circuit_state = Column(String(20), default="closed")
 
+    repo_url = Column(String(500), nullable=True)
+    repo_path = Column(String(500), nullable=True)
+    file_path = Column(String(500), nullable=True)
+    default_branch = Column(String(100), nullable=True)
+
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    health_check_url = Column(String(500), nullable=True)
+    health_check = Column(Text, nullable=True)
+    docs_hash = Column(String(64), nullable=True)
+    cached_docs_context = Column(Text, nullable=True)

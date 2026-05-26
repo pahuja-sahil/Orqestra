@@ -36,22 +36,22 @@ export default function Sidebar() {
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className={`fixed left-0 top-0 h-full w-64 flex flex-col border-r z-40 transition-all duration-700 ${
+      className={`fixed left-0 top-0 h-full w-64 flex flex-col border-r z-40 transition-all duration-500 ${
         isDark
-          ? "bg-[#080004]/90 border-red-700/50 shadow-[2px_0_10px_rgba(180,0,0,0.2)]"
-          : "bg-white border-red-200/60 shadow-[2px_0_10px_rgba(220,20,60,0.1)]"
+          ? "bg-zinc-950/90 border-violet-700/50 shadow-[2px_0_10px_rgba(124,58,237,0.2)]"
+          : "bg-[#FDFBF7] border-violet-200/60 shadow-[2px_0_10px_rgba(139,92,246,0.08)]"
       }`}
     >
       <div className={`flex items-center gap-3 px-6 py-5 border-b transition-all duration-700`}>
         <motion.div
           whileHover={{ rotate: 10 }}
           transition={{ duration: 0.2 }}
-          className={`p-2 rounded-xl ${isDark ? "bg-red-950/60" : "bg-red-50"}`}
+          className={`p-2 rounded-xl ${isDark ? "bg-violet-950/60" : "bg-violet-50"}`}
         >
-          <Zap size={16} className={isDark ? "text-red-500" : "text-red-600"} />
+          <Zap size={16} className={isDark ? "text-violet-500" : "text-violet-600"} />
         </motion.div>
         <span className={`font-bold text-lg tracking-tight ${isDark ? "text-white" : "text-slate-900"}`}>
-          NEXUS
+          ORQESTRA
         </span>
       </div>
 
@@ -70,11 +70,11 @@ export default function Sidebar() {
                 `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
                   isActive
                     ? isDark
-                      ? "bg-red-950/60 text-red-300 border border-red-800/60 shadow-lg shadow-red-950/30"
-                      : "bg-red-50 text-red-700 border border-red-200 shadow-sm"
+                      ? "bg-violet-950/60 text-violet-300 border border-violet-800/60 shadow-lg shadow-violet-950/30"
+                      : "bg-violet-50 text-violet-700 border border-violet-200 shadow-sm"
                     : isDark
                       ? "text-slate-400 hover:text-slate-100 hover:bg-white/5"
-                      : "text-slate-500 hover:text-red-700 hover:bg-red-50/70"
+                      : "text-slate-500 hover:text-violet-700 hover:bg-violet-50/70"
                 }`
               }
             >
@@ -83,7 +83,7 @@ export default function Sidebar() {
                   <Icon
                     size={17}
                     className={isActive
-                      ? isDark ? "text-red-400" : "text-red-600"
+                      ? isDark ? "text-violet-400" : "text-violet-600"
                       : ""}
                   />
                   {label}
@@ -91,7 +91,7 @@ export default function Sidebar() {
                     <motion.div
                       layoutId="activeIndicator"
                       className={`ml-auto w-1.5 h-1.5 rounded-full ${
-                        isDark ? "bg-red-500" : "bg-red-500"
+                        isDark ? "bg-violet-500" : "bg-violet-500"
                       }`}
                     />
                   )}
@@ -104,12 +104,12 @@ export default function Sidebar() {
 
       <div className={`px-3 py-4 border-t transition-all duration-700`}>
         <div className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-2 transition-all duration-300 border ${
-          isDark ? "bg-[#090004]/80 border-red-700/50 shadow-md shadow-red-950/20" : "bg-red-50/60 border-red-200/80 shadow-md shadow-red-100/40"
+          isDark ? "bg-zinc-950/80 border-violet-700/50 shadow-md shadow-violet-950/20" : "bg-violet-50/60 border-violet-200/80 shadow-md shadow-violet-100/40"
         }`}>
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
             isDark
-              ? "bg-gradient-to-br from-red-900 to-red-950 text-red-300 border border-red-800/50"
-              : "bg-gradient-to-br from-red-100 to-red-50 text-red-700 border border-red-200"
+              ? "bg-gradient-to-br from-violet-900 to-violet-950 text-violet-300 border border-violet-800/50"
+              : "bg-gradient-to-br from-violet-100 to-violet-50 text-violet-700 border border-violet-200"
           }`}>
             {user?.name?.charAt(0)?.toUpperCase() || "U"}
           </div>
@@ -129,8 +129,8 @@ export default function Sidebar() {
           onClick={handleLogout}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 border ${
             isDark
-              ? "border-red-950/50 text-red-400/80 hover:text-red-300 hover:bg-red-950/40 hover:border-red-800/60"
-              : "border-red-100 text-red-500 hover:text-red-700 hover:bg-red-50 hover:border-red-300"
+              ? "border-violet-950/50 text-violet-400/80 hover:text-violet-300 hover:bg-violet-950/40 hover:border-violet-800/60"
+              : "border-violet-100 text-violet-500 hover:text-violet-700 hover:bg-violet-50 hover:border-violet-300"
           }`}
         >
           <LogOut size={16} />

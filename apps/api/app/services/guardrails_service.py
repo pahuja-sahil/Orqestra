@@ -8,7 +8,7 @@ class IntegrationOutputValidator:
     Validates CodeGen agent output before sending to user.
     Checks structure, safety and completeness.
     No external Guardrails library needed —
-    custom validation tailored to NEXUS output format.
+    custom validation tailored to ORQESTRA output format.
     """
 
     REQUIRED_SECTIONS = [
@@ -86,7 +86,7 @@ class IntegrationOutputValidator:
         return f"""
 ## Unable to Generate Integration
 
-NEXUS encountered an issue generating the {api_name} integration.
+ORQESTRA encountered an issue generating the {api_name} integration.
 
 **Reason:** {error}
 

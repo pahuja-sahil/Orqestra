@@ -12,6 +12,6 @@ export const useThemeStore = create<ThemeStore>()(
       isDark: true,
       toggle: () => set((state) => ({ isDark: !state.isDark })),
     }),
-    { name: 'nexus-theme' }
+    { name: 'orqestra-theme' }
   )
 )

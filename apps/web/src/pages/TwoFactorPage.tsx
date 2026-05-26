@@ -55,8 +55,8 @@ export default function TwoFactorPage() {
       className="min-h-screen flex items-center justify-center relative overflow-hidden"
       style={{
         background: isDark
-          ? "radial-gradient(ellipse at 50% 30%, rgba(120,0,0,0.35) 0%, transparent 55%), #050008"
-          : "radial-gradient(ellipse at 50% 30%, rgba(220,20,60,0.1) 0%, transparent 55%), #fafafa",
+          ? "radial-gradient(ellipse at 50% 30%, rgba(76,29,149,0.35) 0%, transparent 55%), #09090b"
+          : "radial-gradient(ellipse at 50% 30%, rgba(139,92,246,0.1) 0%, transparent 55%), #fafafa",
       }}
     >
       <motion.div
@@ -65,8 +65,8 @@ export default function TwoFactorPage() {
         transition={{ duration: 0.5 }}
         className={`relative w-full max-w-md mx-4 p-8 rounded-3xl border backdrop-blur-sm ${
           isDark
-            ? "border-red-800/50 bg-[#0d0005]/90 shadow-2xl shadow-red-950/40"
-            : "border-red-200/80 bg-white/95 shadow-2xl shadow-red-100/60"
+            ? "border-violet-800/50 bg-zinc-950/90 shadow-2xl shadow-violet-950/40"
+            : "border-violet-200/80 bg-white/95 shadow-2xl shadow-violet-100/60"
         }`}
       >
         <motion.div
@@ -75,8 +75,8 @@ export default function TwoFactorPage() {
           transition={{ duration: 3, repeat: Infinity }}
           style={{
             background: isDark
-              ? "radial-gradient(ellipse at 50% 0%, rgba(180,0,0,0.2) 0%, transparent 60%)"
-              : "radial-gradient(ellipse at 50% 0%, rgba(220,20,60,0.05) 0%, transparent 60%)",
+              ? "radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.2) 0%, transparent 60%)"
+              : "radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.05) 0%, transparent 60%)",
           }}
         />
 
@@ -87,11 +87,11 @@ export default function TwoFactorPage() {
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
             className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 ${
               isDark
-                ? "bg-red-950/80 border border-red-800/60"
-                : "bg-red-50 border border-red-200"
+                ? "bg-violet-950/80 border border-violet-800/60"
+                : "bg-violet-50 border border-violet-200"
             }`}
           >
-            <Shield size={24} className={isDark ? "text-red-400" : "text-red-600"} />
+            <Shield size={24} className={isDark ? "text-violet-400" : "text-violet-600"} />
           </motion.div>
 
           <h1 className={`text-2xl font-bold mb-2 ${isDark ? "text-white" : "text-slate-900"}`}>
@@ -114,16 +114,16 @@ export default function TwoFactorPage() {
             autoFocus
             className={`w-full text-center text-3xl font-mono tracking-[0.5em] py-4 rounded-2xl border-2 outline-none mb-3 ${
               isDark
-                ? "bg-slate-900/90 border-red-900/60 text-white focus:border-red-600 placeholder:text-slate-700"
-                : "bg-slate-50 border-red-200 text-slate-900 focus:border-red-500 placeholder:text-slate-300"
-            } ${error ? (isDark ? "border-red-500" : "border-red-500") : ""}`}
+                ? "bg-slate-900/90 border-violet-900/60 text-white focus:border-violet-600 placeholder:text-slate-700"
+                : "bg-slate-50 border-violet-200 text-slate-900 focus:border-violet-500 placeholder:text-slate-300"
+            } ${error ? (isDark ? "border-violet-500" : "border-violet-500") : ""}`}
           />
 
           {error && (
             <motion.p
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-red-400 text-xs text-center mb-3"
+              className="text-violet-400 text-xs text-center mb-3"
             >
               {error}
             </motion.p>
@@ -137,8 +137,8 @@ export default function TwoFactorPage() {
             className={`w-full py-3.5 rounded-2xl font-semibold text-sm mb-4 ${
               code.length === 6
                 ? isDark
-                  ? "bg-red-700 text-white hover:bg-red-600 shadow-lg shadow-red-950/50"
-                  : "bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-200/60"
+                  ? "bg-violet-700 text-white hover:bg-violet-600 shadow-lg shadow-violet-950/50"
+                  : "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-200/60"
                 : isDark
                   ? "bg-slate-800 text-slate-600 cursor-not-allowed"
                   : "bg-slate-100 text-slate-400 cursor-not-allowed"
@@ -151,7 +151,7 @@ export default function TwoFactorPage() {
             whileHover={{ x: -3 }}
             onClick={() => navigate("/auth/login")}
             className={`flex items-center gap-2 text-sm font-medium ${
-              isDark ? "text-red-400/80 hover:text-red-300" : "text-red-600 hover:text-red-700"
+              isDark ? "text-violet-400/80 hover:text-violet-300" : "text-violet-600 hover:text-violet-700"
             }`}
           >
             <ArrowLeft size={14} />

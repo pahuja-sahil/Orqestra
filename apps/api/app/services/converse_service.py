@@ -4,7 +4,7 @@ from groq import Groq
 from app.core.config import settings
 from app.core.logger import logger
 from app.agents.rag_agent import run_agent
-from app.agents.nexus_agent import run_nexus_agent
+from app.agents.orqestra_agent import run_orqestra_agent
 
 groq_client = Groq(api_key=settings.GROQ_API_KEY)
 
@@ -35,26 +35,19 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") ->
 
 async def synthesize_speech(text: str) -> bytes:
     """
-    Send text to ElevenLabs and get back audio bytes.
-    Falls back to None if ElevenLabs fails.
+    Send text to Deepgram Aura and get back audio bytes.
+    Falls back to None if Deepgram fails.
     """
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
-                f"https://api.elevenlabs.io/v1/text-to-speech/{settings.ELEVENLABS_VOICE_ID}",
+                f"https://api.deepgram.com/v1/speak?model={settings.DEEPGRAM_VOICE_MODEL}",
                 headers={
-                    "xi-api-key": settings.ELEVENLABS_API_KEY,
+                    "Authorization": f"Token {settings.DEEPGRAM_API_KEY}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "text": text,
-                    "model_id": "eleven_turbo_v2",
-                    "voice_settings": {
-                        "stability": 0.6,
-                        "similarity_boost": 0.75,
-                        "style": 0.3,
-                        "use_speaker_boost": True
-                    }
+                    "text": text
                 }
             )
 
@@ -62,7 +55,7 @@ async def synthesize_speech(text: str) -> bytes:
                 logger.info("tts_complete", chars=len(text))
                 return response.content
             else:
-                logger.warning("tts_unavailable", status=response.status_code)
+                logger.warning("tts_unavailable", status=response.status_code, response_text=response.text)
                 return None
 
     except Exception as e:
@@ -70,13 +63,27 @@ async def synthesize_speech(text: str) -> bytes:
         return None
 
 
-
-async def process_command(text: str, source: str = "voice") -> str:
+async def process_command(
+    text: str,
+    source: str = "voice",
+    repo_url: str = "",
+    user_id: str = "",
+    db=None
+) -> dict:
     if not text:
-        return "I didn't catch that. Could you try again?"
+        return {"response": "I didn't catch that. Could you try again?", "api_name": ""}
     try:
-        response = await run_nexus_agent(text, source=source)
-        return response
+        result = await run_orqestra_agent(
+            text,
+            source=source,
+            repo_url=repo_url,
+            user_id=user_id,
+            db=db
+        )
+        return result
     except Exception as e:
-        logger.error("agent_failed", error=str(e))
-        return "I encountered an issue processing your request. Please try again."
+        error_str = str(e)
+        logger.error("agent_failed", error=error_str)
+        if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+            return {"response": "ORQESTRA is thinking hard right now — rate limit reached. Please retry in a moment.", "api_name": ""}
+        return {"response": "I encountered an issue processing your request. Please try again.", "api_name": ""}

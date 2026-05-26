@@ -17,7 +17,7 @@ services:
   postgres:
     image: postgres:15-alpine
     # alpine = lightweight Linux, smaller image size
-    container_name: nexus_postgres
+    container_name: orqestra_postgres
     restart: unless-stopped
     # restart policy: if container crashes, restart it
     # unless-stopped = don't restart if WE manually stopped it
@@ -35,7 +35,7 @@ services:
       # Named volume = data persists even if container is destroyed
       # Without this: every restart wipes your database
     networks:
-      - nexus_network
+      - orqestra_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -50,7 +50,7 @@ services:
   # ------------------------------------------
   redis:
     image: redis:7-alpine
-    container_name: nexus_redis
+    container_name: orqestra_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -58,7 +58,7 @@ services:
       - redis_data:/data
       # Persists queue data across restarts
     networks:
-      - nexus_network
+      - orqestra_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -75,17 +75,18 @@ services:
     build:
       context: ./apps/api
       dockerfile: ../../infrastructure/docker/api.Dockerfile
-    container_name: nexus_api
+      target: development
+    container_name: orqestra_api
     restart: unless-stopped
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       # Notice: hostname is "postgres" not "localhost"
       # Inside Docker network, service name = hostname
       - REDIS_URL=redis://redis:6379
-      - SECRET_KEY=${SECRET_KEY}
-      - ENVIRONMENT=${ENVIRONMENT}
     volumes:
       - ./apps/api:/app
       # Mounts local code into container
@@ -98,7 +99,7 @@ services:
       # API only starts AFTER postgres AND redis are healthy
       # This prevents "connection refused" errors on startup
     networks:
-      - nexus_network
+      - orqestra_network
 
   # ------------------------------------------
   # WEB — Next.js frontend
@@ -107,7 +108,8 @@ services:
     build:
       context: ./apps/web
       dockerfile: ../../infrastructure/docker/web.Dockerfile
-    container_name: nexus_web
+      target: development
+    container_name: orqestra_web
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -126,7 +128,34 @@ services:
     depends_on:
       - api
     networks:
-      - nexus_network
+      - orqestra_network
+
+  # ------------------------------------------
+  # WORKER — background self-healing brain
+  # Runs: monitor.py (lookout) and repair.py (mechanic)
+  # ------------------------------------------
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: ../../infrastructure/docker/api.Dockerfile
+      target: development
+    container_name: orqestra_worker
+    restart: unless-stopped
+    command: sh -c "cd /app && PYTHONPATH=/app python workers/entrypoint.py"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./apps/api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - orqestra_network
 
   # ------------------------------------------
   # NGINX — reverse proxy
@@ -134,7 +163,7 @@ services:
   # ------------------------------------------
   nginx:
     image: nginx:alpine
-    container_name: nexus_nginx
+    container_name: orqestra_nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -147,7 +176,7 @@ services:
       - api
       - web
     networks:
-      - nexus_network
+      - orqestra_network
 
 # ============================================
 # VOLUMES — persistent data storage
@@ -162,7 +191,7 @@ volumes:
 # NETWORKS — private communication channel
 # ============================================
 networks:
-  nexus_network:
+  orqestra_network:
     driver: bridge
     # All containers on this network find each other by name
     # postgres, redis, api, web, nginx are all hostnames here

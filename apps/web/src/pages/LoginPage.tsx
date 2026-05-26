@@ -14,11 +14,11 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
         style={{
           background: isDark
             ? side === "left"
-              ? "linear-gradient(to right, rgba(180,0,0,0.35), rgba(139,0,0,0.12), transparent)"
-              : "linear-gradient(to left, rgba(180,0,0,0.35), rgba(139,0,0,0.12), transparent)"
+              ? "linear-gradient(to right, rgba(124,58,237,0.35), rgba(109,40,217,0.12), transparent)"
+              : "linear-gradient(to left, rgba(124,58,237,0.35), rgba(109,40,217,0.12), transparent)"
             : side === "left"
-              ? "linear-gradient(to right, rgba(220,20,60,0.15), rgba(220,20,60,0.05), transparent)"
-              : "linear-gradient(to left, rgba(220,20,60,0.15), rgba(220,20,60,0.05), transparent)",
+              ? "linear-gradient(to right, rgba(139,92,246,0.15), rgba(139,92,246,0.05), transparent)"
+              : "linear-gradient(to left, rgba(139,92,246,0.15), rgba(139,92,246,0.05), transparent)",
         }}
       />
       {particles.map((i) => (
@@ -33,8 +33,8 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
             left: side === "left" ? 8 + (i % 5) * 14 : "auto",
             right: side === "right" ? 8 + (i % 5) * 14 : "auto",
             top: `${5 + i * 9}%`,
-            backgroundColor: isDark ? `rgba(255, ${10 + i * 5}, 50, 0.85)` : `rgba(220, 20, 60, 0.5)`,
-            boxShadow: isDark ? `0 0 ${6 + i * 2}px rgba(220, 20, 60, 0.5)` : `0 0 ${5 + i * 1}px rgba(220, 20, 60, 0.25)`,
+            backgroundColor: isDark ? `rgba(${110 + i * 5}, 70, 240, 0.85)` : `rgba(139,92,246, 0.5)`,
+            boxShadow: isDark ? `0 0 ${6 + i * 2}px rgba(139,92,246, 0.5)` : `0 0 ${5 + i * 1}px rgba(139,92,246, 0.25)`,
             filter: "blur(1px)",
           }}
         />
@@ -46,8 +46,8 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
         style={{
           top: "15%",
           background: isDark
-            ? "radial-gradient(ellipse at center, rgba(220,20,60,0.3) 0%, transparent 65%)"
-            : "radial-gradient(ellipse at center, rgba(220,20,60,0.1) 0%, transparent 65%)",
+            ? "radial-gradient(ellipse at center, rgba(139,92,246,0.3) 0%, transparent 65%)"
+            : "radial-gradient(ellipse at center, rgba(139,92,246,0.1) 0%, transparent 65%)",
         }}
       />
       <motion.div
@@ -57,8 +57,8 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
         style={{
           top: "50%",
           background: isDark
-            ? "radial-gradient(ellipse at center, rgba(180,0,0,0.35) 0%, transparent 65%)"
-            : "radial-gradient(ellipse at center, rgba(220,20,60,0.08) 0%, transparent 65%)",
+            ? "radial-gradient(ellipse at center, rgba(124,58,237,0.35) 0%, transparent 65%)"
+            : "radial-gradient(ellipse at center, rgba(139,92,246,0.08) 0%, transparent 65%)",
         }}
       />
       <motion.div
@@ -68,8 +68,8 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
         style={{
           top: "75%",
           background: isDark
-            ? "radial-gradient(ellipse at center, rgba(220,20,60,0.25) 0%, transparent 60%)"
-            : "radial-gradient(ellipse at center, rgba(220,20,60,0.07) 0%, transparent 60%)",
+            ? "radial-gradient(ellipse at center, rgba(139,92,246,0.25) 0%, transparent 60%)"
+            : "radial-gradient(ellipse at center, rgba(139,92,246,0.07) 0%, transparent 60%)",
         }}
       />
     </div>
@@ -85,7 +85,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center transition-colors duration-500 relative overflow-hidden ${isDark ? "bg-[#050008]" : "bg-[#fafafa]"}`}>
+    <div className={`min-h-screen flex items-center justify-center transition-colors duration-500 relative overflow-hidden ${isDark ? "bg-zinc-950" : "bg-zinc-50"}`}>
       <EdgeGlow isDark={isDark} side="left" />
       <EdgeGlow isDark={isDark} side="right" />
 
@@ -93,8 +93,8 @@ export default function LoginPage() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background: isDark
-            ? "radial-gradient(ellipse at 50% 30%, rgba(120,0,0,0.4) 0%, transparent 55%)"
-            : "radial-gradient(ellipse at 50% 30%, rgba(220,20,60,0.12) 0%, transparent 55%)",
+            ? "radial-gradient(ellipse at 50% 30%, rgba(76,29,149,0.4) 0%, transparent 55%)"
+            : "radial-gradient(ellipse at 50% 30%, rgba(139,92,246,0.12) 0%, transparent 55%)",
         }}
       />
 
@@ -104,8 +104,8 @@ export default function LoginPage() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background: isDark
-            ? "radial-gradient(ellipse at 50% 80%, rgba(100,0,0,0.25) 0%, transparent 50%)"
-            : "radial-gradient(ellipse at 50% 80%, rgba(220,20,60,0.07) 0%, transparent 50%)",
+            ? "radial-gradient(ellipse at 50% 80%, rgba(46,16,101,0.25) 0%, transparent 50%)"
+            : "radial-gradient(ellipse at 50% 80%, rgba(139,92,246,0.07) 0%, transparent 50%)",
         }}
       />
 
@@ -115,8 +115,8 @@ export default function LoginPage() {
         transition={{ duration: 0.6 }}
         className={`relative z-20 w-full max-w-md mx-4 p-8 rounded-3xl border backdrop-blur-sm ${
           isDark
-            ? "border-red-800/50 bg-[#0d0005]/90 shadow-2xl shadow-red-950/50"
-            : "border-red-200/80 bg-white/90 shadow-2xl shadow-red-100/80"
+            ? "border-violet-800/50 bg-zinc-950/90 shadow-2xl shadow-violet-950/50"
+            : "border-violet-200/80 bg-white/90 shadow-2xl shadow-violet-100/80"
         }`}
       >
         <motion.div
@@ -125,8 +125,8 @@ export default function LoginPage() {
           transition={{ duration: 3, repeat: Infinity }}
           style={{
             background: isDark
-              ? "radial-gradient(ellipse at 50% 0%, rgba(180,0,0,0.25) 0%, transparent 60%)"
-              : "radial-gradient(ellipse at 50% 0%, rgba(220,20,60,0.06) 0%, transparent 60%)",
+              ? "radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.25) 0%, transparent 60%)"
+              : "radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.06) 0%, transparent 60%)",
           }}
         />
 
@@ -135,7 +135,7 @@ export default function LoginPage() {
             isDark ? "opacity-100" : "opacity-0"
           }`}
           style={{
-            background: "linear-gradient(135deg, rgba(139,0,0,0.08) 0%, transparent 50%, rgba(100,0,0,0.05) 100%)",
+            background: "linear-gradient(135deg, rgba(109,40,217,0.08) 0%, transparent 50%, rgba(46,16,101,0.05) 100%)",
           }}
         />
 
@@ -147,11 +147,11 @@ export default function LoginPage() {
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
                 isDark
-                  ? "bg-red-950/80 border border-red-900/50"
-                  : "bg-red-50 border border-red-100"
+                  ? "bg-violet-950/80 border border-violet-900/50"
+                  : "bg-violet-50 border border-violet-100"
               }`}
             >
-              <Zap size={24} className={isDark ? "text-red-500" : "text-red-600"} />
+              <Zap size={24} className={isDark ? "text-violet-500" : "text-violet-600"} />
             </motion.div>
 
             <motion.h1
@@ -160,7 +160,7 @@ export default function LoginPage() {
               transition={{ delay: 0.3 }}
               className={`text-2xl font-bold mb-1 ${isDark ? "text-white" : "text-slate-900"}`}
             >
-              Welcome to NEXUS
+              Welcome to ORQESTRA
             </motion.h1>
 
             <motion.p
@@ -179,8 +179,8 @@ export default function LoginPage() {
             transition={{ delay: 0.5 }}
             className={`mb-6 p-4 rounded-2xl border ${
               isDark
-                ? "border-red-900/40 bg-red-950/30"
-                : "border-red-100 bg-red-50/60"
+                ? "border-violet-900/40 bg-violet-950/30"
+                : "border-violet-100 bg-violet-50/60"
             }`}
           >
             <div className="flex flex-col gap-2">
@@ -192,7 +192,7 @@ export default function LoginPage() {
                   transition={{ delay: 0.6 + i * 0.1 }}
                   className="flex items-center gap-2"
                 >
-                  <div className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-red-500" : "bg-red-600"}`} />
+                  <div className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-violet-500" : "bg-violet-600"}`} />
                   <span className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>{feature}</span>
                 </motion.div>
               ))}
@@ -207,8 +207,8 @@ export default function LoginPage() {
             onClick={handleGoogleLogin}
             className={`w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl font-semibold text-sm transition-all duration-200 border ${
               isDark
-                ? "border-red-900/60 bg-red-950/40 text-white hover:border-red-700 hover:bg-red-900/50 hover:shadow-lg hover:shadow-red-950/50"
-                : "border-slate-200 bg-white text-slate-800 hover:border-red-300 hover:shadow-md hover:shadow-red-50"
+                ? "border-violet-900/60 bg-violet-950/40 text-white hover:border-violet-700 hover:bg-violet-900/50 hover:shadow-lg hover:shadow-violet-950/50"
+                : "border-slate-200 bg-white text-slate-800 hover:border-violet-300 hover:shadow-md hover:shadow-violet-50"
             }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -227,11 +227,11 @@ export default function LoginPage() {
             className={`text-xs text-center mt-6 ${isDark ? "text-slate-600" : "text-slate-400"}`}
           >
             By signing in you agree to our{" "}
-            <span className={`cursor-pointer ${isDark ? "text-red-500 hover:text-red-400" : "text-red-600 hover:text-red-500"}`}>
+            <span className={`cursor-pointer ${isDark ? "text-violet-500 hover:text-violet-400" : "text-violet-600 hover:text-violet-500"}`}>
               Terms of Service
             </span>{" "}
             and{" "}
-            <span className={`cursor-pointer ${isDark ? "text-red-500 hover:text-red-400" : "text-red-600 hover:text-red-500"}`}>
+            <span className={`cursor-pointer ${isDark ? "text-violet-500 hover:text-violet-400" : "text-violet-600 hover:text-violet-500"}`}>
               Privacy Policy
             </span>
           </motion.p>
@@ -245,8 +245,8 @@ export default function LoginPage() {
               onClick={() => navigate("/")}
               className={`flex items-center gap-2 text-base font-semibold transition-colors duration-200 ${
                 isDark
-                  ? "text-red-500/80 hover:text-red-400"
-                  : "text-red-500 hover:text-red-600"
+                  ? "text-violet-500/80 hover:text-violet-400"
+                  : "text-violet-500 hover:text-violet-600"
               }`}
             >
               ← Back to home

@@ -36,27 +36,30 @@ FROM base AS dependencies
 COPY requirements.txt .
 
 # Install dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --default-timeout=1000 --retries=10 -r requirements.txt
 # --no-cache-dir = don't store pip cache in image
 # keeps image size smaller
 
 # ============================================
 # STAGE 3: DEVELOPMENT
-# Used when ENVIRONMENT=development
 # Hot reload enabled — code changes reflect instantly
 # ============================================
 FROM dependencies AS development
 
-# Copy all application code
 COPY . .
 
-# Expose port 8000 to Docker network
 EXPOSE 8000
 
-# Start FastAPI with hot reload
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--reload", "--port", "8000"]
-# main:app = file "main.py", variable "app"
-# --host 0.0.0.0 = accept connections from anywhere in Docker network
-# --reload = restart server when code changes (dev only)
-# WITHOUT 0.0.0.0: container only accepts connections from itself
+
+# ============================================
+# STAGE 4: PRODUCTION
+# Optimized for production deployment
+# ============================================
+FROM dependencies AS production
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["gunicorn", "main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "120", "--keep-alive", "5", "--access-logfile", "-", "--error-logfile", "-"]

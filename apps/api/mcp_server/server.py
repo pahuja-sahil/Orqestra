@@ -5,10 +5,10 @@ from mcp_server.tools.code_runner import register_code_runner
 from app.core.logger import logger
 
 mcp = FastMCP(
-    name="NEXUS MCP Server",
+    name="ORQESTRA MCP Server",
     instructions="""
-    You are the NEXUS MCP Tool Execution Server — the secure backbone
-    of the NEXUS autonomous API integration platform.
+    You are the ORQESTRA MCP Tool Execution Server — the secure backbone
+    of the ORQESTRA autonomous API integration platform.
 
     YOUR RESPONSIBILITIES:
     1. API Health Checking

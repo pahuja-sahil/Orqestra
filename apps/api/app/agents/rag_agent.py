@@ -1,5 +1,7 @@
 from typing import TypedDict, Annotated
 from langgraph.graph import StateGraph, END
+from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
 from app.services.vector_service import retrieve_relevant_chunks
 from app.core.config import settings
@@ -17,11 +19,30 @@ class AgentState(TypedDict):
     error: str | None        # error if something fails
 
 # ─── LLM Setup ────────────────────────────────────────
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    google_api_key=settings.GEMINI_API_KEY,
-    temperature=0.3
-)
+def get_rag_llm():
+    """Get LLM for RAG agent - supports multiple providers"""
+    if settings.GEMINI_API_KEY:
+        return ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash",
+            google_api_key=settings.GEMINI_API_KEY,
+            temperature=0.3
+        )
+    elif settings.OPENROUTER_API_KEY:
+        return ChatOpenAI(
+            model="meta-llama/llama-3.3-70b-instruct:free",
+            api_key=settings.OPENROUTER_API_KEY,
+            base_url="https://openrouter.ai/api/v1",
+            temperature=0.3
+        )
+    elif settings.GROQ_API_KEY:
+        return ChatGroq(
+            model="llama-3.3-70b-versatile",
+            api_key=settings.GROQ_API_KEY,
+            temperature=0.3
+        )
+    raise ValueError("No LLM API keys configured")
+
+llm = get_rag_llm()
 
 # ─── Node 1: Retrieve ─────────────────────────────────
 async def retrieve_node(state: AgentState) -> AgentState:
@@ -50,34 +71,40 @@ async def retrieve_node(state: AgentState) -> AgentState:
 
 # ─── Node 2: Generate ─────────────────────────────────
 async def generate_node(state: AgentState) -> AgentState:
-    """
-    Sends user question + retrieved context to Gemini
-    Gets back an intelligent response
-    """
     logger.info("agent_generate")
 
     try:
+        retry = state.get("retry_count", 0)
+        retry_context = ""
+
+        if retry > 0 and state.get("evaluation_notes"):
+            retry_context = f"""
+            PREVIOUS ATTEMPT FEEDBACK:
+            {state["evaluation_notes"]}
+
+            Improve your response by addressing these issues.
+            """
+
         if state["context"]:
-            prompt = f"""You are NEXUS, an intelligent API integration assistant.
-Use the following documentation context to answer the user's question.
-Be concise, practical, and developer-friendly.
-If the context doesn't contain enough information, say so honestly.
+            prompt = f"""You are ORQESTRA, an intelligent API integration assistant.
+            Use the following documentation context to answer the user's question.
+            Be concise, practical, and developer-friendly.
+            If the context doesn't contain enough information, say so honestly.
 
-DOCUMENTATION CONTEXT:
-{state["context"]}
+            DOCUMENTATION CONTEXT:
+            {state["context"]}
 
-USER QUESTION: {state["user_input"]}
-
-Provide a clear, actionable response:"""
+            USER QUESTION: {state["user_input"]}
+            {retry_context}
+            Provide a clear, actionable response:"""
         else:
-            prompt = f"""You are NEXUS, an intelligent API integration assistant.
-You help developers integrate APIs, write code, and solve technical problems.
-Be concise, practical, and developer-friendly.
-If you need specific API documentation to give a better answer, mention that.
+            prompt = f"""You are ORQESTRA, an intelligent API integration assistant.
+            You help developers integrate APIs, write code, and solve technical problems.
+            Be concise, practical, and developer-friendly.
 
-USER QUESTION: {state["user_input"]}
-
-Provide a clear, actionable response:"""
+            USER QUESTION: {state["user_input"]}
+            {retry_context}
+            Provide a clear, actionable response:"""
 
         response = await llm.ainvoke(prompt)
         state["response"] = response.content
@@ -86,10 +113,9 @@ Provide a clear, actionable response:"""
     except Exception as e:
         logger.error("generation_failed", error=str(e))
         state["error"] = str(e)
-        state["response"] = "I encountered an error processing your request. Please try again."
+        state["response"] = "I encountered an error. Please try again."
 
     return state
-
 
 # ─── Node 3: Format ───────────────────────────────────
 async def format_node(state: AgentState) -> AgentState:

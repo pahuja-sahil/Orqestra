@@ -41,7 +41,7 @@ def register_doc_fetcher(mcp: FastMCP):
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(
                     url,
-                    headers={"User-Agent": "NEXUS/1.0 API Doc Fetcher"}
+                    headers={"User-Agent": "ORQESTRA/1.0 API Doc Fetcher"}
                 )
 
                 if response.status_code != 200:

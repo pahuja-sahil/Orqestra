@@ -8,7 +8,7 @@ import { Navbar } from "@/components/ui/navbar"
 const features = [
   { icon: Bot, title: "Multi-Agent AI", description: "Planner, Researcher, CodeGen, and Validator agents working in orchestrated harmony." },
   { icon: RefreshCw, title: "Self-Healing", description: "Detects broken integrations at 2am, fixes them, redeploys — while you sleep." },
-  { icon: Mic, title: "Voice Interface", description: "Just speak. NEXUS understands, acts, and talks back with results." },
+  { icon: Mic, title: "Voice Interface", description: "Just speak. ORQESTRA understands, acts, and talks back with results." },
   { icon: Code2, title: "Code Generation", description: "Reads API docs, writes integration code, tests it in a sandbox automatically." },
   { icon: Shield, title: "Guardrails AI", description: "Every agent decision is validated. No hallucinations, no data leaks." },
   { icon: Zap, title: "Real-time Pipeline", description: "Watch your integration being built live with full transparency." },
@@ -28,11 +28,11 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
         style={{
           background: isDark
             ? side === "left"
-              ? "linear-gradient(to right, rgba(180,0,0,0.35), rgba(139,0,0,0.12), transparent)"
-              : "linear-gradient(to left, rgba(180,0,0,0.35), rgba(139,0,0,0.12), transparent)"
+              ? "linear-gradient(to right, rgba(124,58,237,0.35), rgba(109,40,217,0.12), transparent)"
+              : "linear-gradient(to left, rgba(124,58,237,0.35), rgba(109,40,217,0.12), transparent)"
             : side === "left"
-              ? "linear-gradient(to right, rgba(220,20,60,0.15), rgba(220,20,60,0.05), transparent)"
-              : "linear-gradient(to left, rgba(220,20,60,0.15), rgba(220,20,60,0.05), transparent)",
+              ? "linear-gradient(to right, rgba(139,92,246,0.15), rgba(139,92,246,0.05), transparent)"
+              : "linear-gradient(to left, rgba(139,92,246,0.15), rgba(139,92,246,0.05), transparent)",
         }}
       />
 
@@ -58,11 +58,11 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
             right: side === "right" ? 8 + (i % 5) * 14 : "auto",
             top: `${5 + i * 9}%`,
             backgroundColor: isDark
-              ? `rgba(255, ${10 + i * 5}, 50, 0.85)`
-              : `rgba(220, 20, 60, 0.5)`,
+              ? `rgba(${110 + i * 5}, 70, 240, 0.85)`
+              : `rgba(139,92,246, 0.5)`,
             boxShadow: isDark
-              ? `0 0 ${6 + i * 2}px rgba(220, 20, 60, 0.5)`
-              : `0 0 ${5 + i * 1}px rgba(220, 20, 60, 0.25)`,
+              ? `0 0 ${6 + i * 2}px rgba(139,92,246, 0.5)`
+              : `0 0 ${5 + i * 1}px rgba(139,92,246, 0.25)`,
             filter: "blur(1px)",
           }}
         />
@@ -75,8 +75,8 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
         style={{
           top: "15%",
           background: isDark
-            ? "radial-gradient(ellipse at center, rgba(220,20,60,0.3) 0%, transparent 65%)"
-            : "radial-gradient(ellipse at center, rgba(220,20,60,0.1) 0%, transparent 65%)",
+            ? "radial-gradient(ellipse at center, rgba(139,92,246,0.3) 0%, transparent 65%)"
+            : "radial-gradient(ellipse at center, rgba(139,92,246,0.1) 0%, transparent 65%)",
         }}
       />
 
@@ -87,8 +87,8 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
         style={{
           top: "50%",
           background: isDark
-            ? "radial-gradient(ellipse at center, rgba(180,0,0,0.35) 0%, transparent 65%)"
-            : "radial-gradient(ellipse at center, rgba(220,20,60,0.08) 0%, transparent 65%)",
+            ? "radial-gradient(ellipse at center, rgba(124,58,237,0.35) 0%, transparent 65%)"
+            : "radial-gradient(ellipse at center, rgba(139,92,246,0.08) 0%, transparent 65%)",
         }}
       />
 
@@ -99,8 +99,8 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
         style={{
           top: "75%",
           background: isDark
-            ? "radial-gradient(ellipse at center, rgba(220,20,60,0.25) 0%, transparent 60%)"
-            : "radial-gradient(ellipse at center, rgba(220,20,60,0.07) 0%, transparent 60%)",
+            ? "radial-gradient(ellipse at center, rgba(139,92,246,0.25) 0%, transparent 60%)"
+            : "radial-gradient(ellipse at center, rgba(139,92,246,0.07) 0%, transparent 60%)",
         }}
       />
     </div>
@@ -112,7 +112,7 @@ export default function HomePage() {
   const { isDark } = useThemeStore()
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 ${isDark ? "bg-[#050008]" : "bg-[#fafafa]"}`}>
+    <div className={`min-h-screen transition-colors duration-500 ${isDark ? "bg-zinc-950" : "bg-zinc-50"}`}>
       <Navbar />
       <EdgeGlow isDark={isDark} side="left" />
       <EdgeGlow isDark={isDark} side="right" />
@@ -130,8 +130,8 @@ export default function HomePage() {
             transition={{ delay: 0.6, duration: 0.6 }}
             className={`px-4 py-1.5 rounded-full border text-xs font-semibold tracking-widest uppercase ${
               isDark
-                ? "border-red-900/50 bg-red-950/30 text-red-400"
-                : "border-red-200 bg-red-50 text-red-600"
+                ? "border-violet-900/50 bg-violet-950/30 text-violet-400"
+                : "border-violet-200 bg-violet-50 text-violet-600"
             }`}
           >
             Autonomous API Integration Platform
@@ -148,10 +148,10 @@ export default function HomePage() {
             Meet{" "}
             <span className={`bg-gradient-to-b bg-clip-text text-transparent ${
               isDark
-                ? "from-red-300 via-red-500 to-red-900"
-                : "from-red-400 via-red-600 to-red-800"
+                ? "from-violet-300 via-violet-500 to-violet-900"
+                : "from-violet-400 via-violet-600 to-violet-800"
             }`}>
-              NEXUS
+              ORQESTRA
             </span>
           </motion.h1>
 
@@ -163,9 +163,9 @@ export default function HomePage() {
               isDark ? "text-slate-400" : "text-slate-600"
             }`}
           >
-            Your AI teammate that integrates any API, writes the code, tests it,
+            Your AI conductor that orchestrates any API integration, writes the code, tests it,
             and{" "}
-            <span className={isDark ? "text-red-400 font-medium" : "text-red-600 font-medium"}>
+            <span className={isDark ? "text-violet-400 font-medium" : "text-violet-600 font-medium"}>
               fixes itself when it breaks.
             </span>
           </motion.p>
@@ -181,8 +181,8 @@ export default function HomePage() {
               onClick={() => navigate("/auth/login")}
               className={`group flex items-center gap-2 px-8 py-3.5 rounded-full font-semibold transition-all duration-200 shadow-xl ${
                 isDark
-                  ? "bg-red-700 text-white hover:bg-red-600 shadow-red-900/40 hover:shadow-red-700/40"
-                  : "bg-red-600 text-white hover:bg-red-500 shadow-red-200/60"
+                  ? "bg-violet-700 text-white hover:bg-violet-600 shadow-violet-900/40 hover:shadow-violet-700/40"
+                  : "bg-violet-600 text-white hover:bg-violet-500 shadow-violet-200/60"
               }`}
             >
               Get Started
@@ -194,8 +194,8 @@ export default function HomePage() {
               onClick={() => navigate("/dashboard")}
               className={`px-8 py-3.5 rounded-full border font-semibold transition-all duration-300 ${
                 isDark
-                  ? "border-red-900/50 text-slate-300 hover:border-red-600 hover:text-red-400 hover:shadow-[0_0_20px_rgba(220,20,60,0.15)]"
-                  : "border-red-200 text-slate-700 hover:border-red-500 hover:text-red-600 hover:shadow-[0_0_20px_rgba(220,20,60,0.1)]"
+                  ? "border-violet-900/50 text-slate-300 hover:border-violet-600 hover:text-violet-400 hover:shadow-[0_0_20px_rgba(139,92,246,0.15)]"
+                  : "border-violet-200 text-slate-700 hover:border-violet-500 hover:text-violet-600 hover:shadow-[0_0_20px_rgba(139,92,246,0.1)]"
               }`}
             >
               View Demo
@@ -206,7 +206,7 @@ export default function HomePage() {
 
       <section
         id="features"
-        className={`relative py-24 px-6 transition-colors duration-500 ${isDark ? "bg-[#050008]" : "bg-[#fafafa]"}`}
+        className={`relative py-24 px-6 transition-colors duration-500 ${isDark ? "bg-zinc-950" : "bg-zinc-50"}`}
       >
         <div className="max-w-6xl mx-auto">
           <motion.div
@@ -219,7 +219,7 @@ export default function HomePage() {
             <h2 className={`text-4xl md:text-5xl font-bold mb-4 ${isDark ? "text-white" : "text-slate-900"}`}>
               Everything you need,{" "}
               <span className={`bg-gradient-to-r bg-clip-text text-transparent ${
-                isDark ? "from-red-400 to-red-600" : "from-red-500 to-red-700"
+                isDark ? "from-violet-400 to-violet-600" : "from-violet-500 to-violet-700"
               }`}>
                 nothing you don't
               </span>
@@ -240,16 +240,16 @@ export default function HomePage() {
                 whileHover={{ y: -4, transition: { duration: 0.2 } }}
                 className={`group p-6 rounded-2xl border transition-all duration-300 cursor-default ${
                   isDark
-                    ? "border-red-950/40 bg-red-950/10 hover:border-red-800/60 hover:bg-red-950/20 hover:shadow-[0_0_30px_rgba(139,0,0,0.1)]"
-                    : "border-red-100 bg-white hover:border-red-200 hover:shadow-lg hover:shadow-red-50"
+                    ? "border-violet-950/40 bg-violet-950/10 hover:border-violet-800/60 hover:bg-violet-950/20 hover:shadow-[0_0_30px_rgba(109,40,217,0.1)]"
+                    : "border-violet-100 bg-white hover:border-violet-200 hover:shadow-lg hover:shadow-violet-50"
                 }`}
               >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-colors duration-200 ${
                   isDark
-                    ? "bg-red-950/50 group-hover:bg-red-900/50"
-                    : "bg-red-50 group-hover:bg-red-100"
+                    ? "bg-violet-950/50 group-hover:bg-violet-900/50"
+                    : "bg-violet-50 group-hover:bg-violet-100"
                 }`}>
-                  <Icon size={18} className={isDark ? "text-red-400" : "text-red-600"} />
+                  <Icon size={18} className={isDark ? "text-violet-400" : "text-violet-600"} />
                 </div>
                 <h3 className={`font-semibold text-base mb-2 ${isDark ? "text-white" : "text-slate-900"}`}>
                   {title}
@@ -263,7 +263,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={`relative py-24 px-6 transition-colors duration-500 ${isDark ? "bg-[#050008]" : "bg-[#fafafa]"}`}>
+      <section className={`relative py-24 px-6 transition-colors duration-500 ${isDark ? "bg-zinc-950" : "bg-zinc-50"}`}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -274,16 +274,16 @@ export default function HomePage() {
           <div
             className={`relative p-12 rounded-3xl border overflow-hidden ${
               isDark
-                ? "border-red-800/40 bg-red-950/25"
-                : "border-red-200 bg-red-50/80"
+                ? "border-violet-800/40 bg-violet-950/25"
+                : "border-violet-200 bg-violet-50/80"
             }`}
           >
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
                 background: isDark
-                  ? "radial-gradient(ellipse at 50% 0%, rgba(139,0,0,0.35) 0%, transparent 65%)"
-                  : "radial-gradient(ellipse at 50% 0%, rgba(220,20,60,0.12) 0%, transparent 65%)",
+                  ? "radial-gradient(ellipse at 50% 0%, rgba(109,40,217,0.35) 0%, transparent 65%)"
+                  : "radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.12) 0%, transparent 65%)",
               }}
             />
             <motion.div
@@ -292,8 +292,8 @@ export default function HomePage() {
               className="absolute inset-0 pointer-events-none"
               style={{
                 background: isDark
-                  ? "radial-gradient(ellipse at 50% 100%, rgba(139,0,0,0.2) 0%, transparent 60%)"
-                  : "radial-gradient(ellipse at 50% 100%, rgba(220,20,60,0.08) 0%, transparent 60%)",
+                  ? "radial-gradient(ellipse at 50% 100%, rgba(109,40,217,0.2) 0%, transparent 60%)"
+                  : "radial-gradient(ellipse at 50% 100%, rgba(139,92,246,0.08) 0%, transparent 60%)",
               }}
             />
 
@@ -301,16 +301,16 @@ export default function HomePage() {
               <h2 className={`text-4xl font-bold mb-4 ${isDark ? "text-white" : "text-slate-900"}`}>
                 Ready to never debug an API again?
               </h2>
-              <p className={`text-lg mb-8 ${isDark ? "text-red-300/80" : "text-red-700/80"}`}>
-                Join developers who let NEXUS handle the integrations.
+              <p className={`text-lg mb-8 ${isDark ? "text-violet-300/80" : "text-violet-700/80"}`}>
+                Join developers who let ORQESTRA handle the integrations.
               </p>
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => navigate("/auth/login")}
                 className={`group inline-flex items-center gap-2 px-10 py-4 rounded-full font-semibold transition-all duration-200 shadow-xl ${
                   isDark
-                    ? "bg-red-700 text-white hover:bg-red-600 shadow-red-900/50 hover:shadow-red-700/50"
-                    : "bg-red-600 text-white hover:bg-red-500 shadow-red-300/50"
+                    ? "bg-violet-700 text-white hover:bg-violet-600 shadow-violet-900/50 hover:shadow-violet-700/50"
+                    : "bg-violet-600 text-white hover:bg-violet-500 shadow-violet-300/50"
                 }`}
               >
                 Start Building Free

@@ -1,30 +1,46 @@
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Literal
+
+# Fix scope classification for self-healing
+FixScope = Literal["minimal", "moderate", "complete"]
 
 
-class NexusState(TypedDict):
-    # ── Input ────────────────────────────────
+class OrqestraState(TypedDict):
+    # Input
     user_input: str
-    source: str                  # "voice" or "text"
+    source: str
 
-    # ── Planning ─────────────────────────────
-    api_name: str                # detected API name
-    integration_goal: str        # what user wants to achieve
-    integration_steps: list      # step by step plan
-    language: str                # python/javascript/etc
+    # Planning
+    api_name: str
+    integration_goal: str
+    integration_steps: list
+    language: str
 
-    # ── Research ─────────────────────────────
-    retrieved_docs: list         # raw chunks from ChromaDB
-    context: str                 # formatted context for LLM
+    # Research
+    retrieved_docs: list
+    context: str
 
-    # ── Code Generation ───────────────────────
-    generated_code: str          # actual code output
-    code_explanation: str        # explanation of the code
+    # Repo Context 
+    repo_url: str
+    repo_context: str
+    target_file: str
+    default_branch: str
+    repo_path: str
+    existing_file_content: str
+    user_id: str
+    db: Optional[object]
 
-    # ── Evaluation ───────────────────────────
-    quality_score: int           # 1-10
-    evaluation_notes: str        # feedback for retry
-    retry_count: int             # current retry number
+    # Code Generation
+    generated_code: str
+    code_explanation: str
 
-    # ── Output ───────────────────────────────
-    final_response: str          # formatted response to user
-    error: Optional[str]         # error message if failed
+    # Evaluation
+    quality_score: int
+    evaluation_notes: str
+    retry_count: int
+
+    # Output
+    final_response: str
+    error: Optional[str]
+    error_reason: Optional[str]
+    repair_intent: Optional[str]
+    fix_scope: Optional[FixScope]

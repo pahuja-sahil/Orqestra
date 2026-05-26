@@ -1,40 +1,45 @@
+import json
 import re
-from langchain_google_genai import ChatGoogleGenerativeAI
-from app.agents.state import NexusState
+from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
+from app.agents.state import OrqestraState
 from app.core.config import settings
 from app.core.logger import logger
-from langchain_groq import ChatGroq
-from app.core.config import settings
+from app.core.monitoring import track_llm_call
 
-gemini_llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    google_api_key=settings.GEMINI_API_KEY,
+QUALITY_THRESHOLD = 7
+MAX_RETRIES = 3
+
+# OpenRouter (Llama 3.3 70B Free) - Judge
+openrouter_llm = ChatOpenAI(
+    model="meta-llama/llama-3.3-70b-instruct:free",
+    api_key=settings.OPENROUTER_API_KEY or "none",
+    base_url="https://openrouter.ai/api/v1",
     temperature=0.1
 )
 
+# Groq (Llama 3.3 70B Versatile) - Fallback
 groq_llm = ChatGroq(
     model="llama-3.3-70b-versatile",
-    api_key=settings.GROQ_API_KEY,
+    api_key=settings.GROQ_API_KEY or "none",
     temperature=0.1
 )
 
-
-async def get_llm_response(prompt: str) -> str:
-    try:
-        response = await gemini_llm.ainvoke(prompt)
-        return response.content
-    except Exception as e:
-        if any(x in str(e) for x in ["429", "RESOURCE_EXHAUSTED", "quota"]):
-            logger.warning("gemini_rate_limited_falling_back_to_groq")
-            response = await groq_llm.ainvoke(prompt)
+async def get_evaluator_response(prompt: str) -> str:
+    """Try OpenRouter first, fall back to Groq."""
+    if settings.OPENROUTER_API_KEY:
+        try:
+            response = await openrouter_llm.ainvoke(prompt)
             return response.content
-        raise
+        except Exception as e:
+            logger.warning("evaluator_openrouter_unavailable_falling_back_to_groq", error=str(e)[:100])
+    
+    response = await groq_llm.ainvoke(prompt)
+    return response.content
 
-
-async def evaluator_node(state: NexusState) -> NexusState:
+async def evaluator_node(state: OrqestraState) -> OrqestraState:
     """
     Scores the generated code/response.
-    Provides specific feedback for retry if score < threshold.
     """
     logger.info("evaluator_node_start",
                 retry=state.get("retry_count", 0))
@@ -65,7 +70,17 @@ SCORE: [number 1-10]
 NOTES: [specific issues to fix, or "Excellent" if score >= 8]"""
 
     try:
-        content = await get_llm_response(prompt)
+        content = await get_evaluator_response(prompt)
+        track_llm_call(
+            name="evaluator",
+            model="llama-3.3-70b",
+            prompt=prompt,
+            response=content,
+            metadata={
+                "api_name": state.get("api_name", ""),
+                "score": state.get("quality_score", 0)
+            }
+        )
         content = content.strip()
 
         score_match = re.search(r"SCORE:\s*(\d+)", content)
@@ -93,14 +108,15 @@ NOTES: [specific issues to fix, or "Excellent" if score >= 8]"""
     return state
 
 
-def should_retry(state: NexusState) -> str:
+def should_retry(state: OrqestraState) -> str:
     score = state.get("quality_score", 7)
     retries = state.get("retry_count", 0)
     error = state.get("error", "")
 
-    # Never retry on rate limit or API errors
-    if error and any(x in str(error) for x in ["429", "RESOURCE_EXHAUSTED", "quota"]):
-        logger.warning("skipping_retry_rate_limited")
+    # Stop retry on ANY error — prevents infinite loops
+    if error:
+        logger.warning("skipping_retry_due_to_error",
+                       error=str(error)[:80])
         return "end"
 
     if score < QUALITY_THRESHOLD and retries < MAX_RETRIES:

@@ -35,4 +35,4 @@ def setup_logging() -> None:
     )
 
 
-logger = structlog.get_logger("nexus")
+logger = structlog.get_logger("orqestra")

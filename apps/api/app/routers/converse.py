@@ -151,7 +151,8 @@ async def voice_websocket(websocket: WebSocket):
                         "stage": "thinking"
                     }))
 
-                    response_text = await process_command(transcript, source="voice")
+                    result = await process_command(transcript, source="voice")
+                    response_text = result["response"]
                     await websocket.send_text(json.dumps({
                         "type": "response",
                         "text": response_text
@@ -162,7 +163,11 @@ async def voice_websocket(websocket: WebSocket):
                         "stage": "synthesizing"
                     }))
 
-                    audio_bytes = await synthesize_speech(response_text)
+                    speak_text = response_text
+                    if "```" in response_text or len(response_text) > 400:
+                        speak_text = "I have generated the requested integration code. Please check the chat to view it."
+
+                    audio_bytes = await synthesize_speech(speak_text)
                     if audio_bytes:
                         audio_b64 = base64.b64encode(audio_bytes).decode()
                         await websocket.send_text(json.dumps({
@@ -193,19 +198,33 @@ async def voice_websocket(websocket: WebSocket):
         logger.error("websocket_error", error=str(e))
 
 @router.post("/process")
-async def process_text(request: Request):
+async def process_text(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
     auth_header = request.headers.get("Authorization")
     if not auth_header:
         raise HTTPException(status_code=401, detail="Not authenticated")
     token = auth_header.replace("Bearer ", "")
-    if not verify_token(token):
+    payload = verify_token(token)
+    if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
+
     body = await request.json()
     text = body.get("text", "")
+    repo_url = body.get("repo_url", "")
+
     if not text:
         raise HTTPException(status_code=400, detail="No text provided")
-    response = await process_command(text, source="text")
-    return {"response": response}
+
+    result = await process_command(
+        text,
+        source="text",
+        repo_url=repo_url,
+        user_id=payload["sub"],
+        db=db
+    )
+    return {"response": result["response"], "api_name": result.get("api_name", "")}
 
 
 @router.post("/ingest")

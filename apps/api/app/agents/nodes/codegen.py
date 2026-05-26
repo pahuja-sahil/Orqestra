@@ -1,35 +1,85 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
-from app.agents.state import NexusState
+from langchain_google_genai import ChatGoogleGenerativeAI
+from app.agents.state import OrqestraState
 from app.core.config import settings
 from app.core.logger import logger
+from app.services.guardrails_service import validate_agent_response
+from app.core.monitoring import track_llm_call
+import asyncio
 
-gemini_llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    google_api_key=settings.GEMINI_API_KEY,
-    temperature=0.3
+# OpenRouter (Llama 3.3 70B Free)
+openrouter_llm = ChatOpenAI(
+    model="meta-llama/llama-3.3-70b-instruct:free",
+    api_key=settings.OPENROUTER_API_KEY or "none",
+    base_url="https://openrouter.ai/api/v1",
+    temperature=0.3,
+    max_retries=0
 )
 
+# Groq (Llama 3.3 70B Versatile)
 groq_llm = ChatGroq(
     model="llama-3.3-70b-versatile",
-    api_key=settings.GROQ_API_KEY,
-    temperature=0.3
+    api_key=settings.GROQ_API_KEY or "none",
+    temperature=0.3,
+    max_retries=0
+)
+
+# Gemini (fallback)
+gemini_llm = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash",
+    google_api_key=settings.GEMINI_API_KEY or "none",
+    temperature=0.3,
+    max_retries=0
 )
 
 
 async def get_llm_response(prompt: str) -> str:
-    """Try Gemini first, fall back to Groq on rate limit."""
-    try:
-        response = await gemini_llm.ainvoke(prompt)
-        return response.content
-    except Exception as e:
-        if any(x in str(e) for x in ["429", "RESOURCE_EXHAUSTED", "quota"]):
-            logger.warning("gemini_rate_limited_falling_back_to_groq")
-            response = await groq_llm.ainvoke(prompt)
-            return response.content
-        raise
+    """Try multiple LLM providers with exponential backoff on rate limits."""
+    providers = []
+    
+    if settings.GEMINI_API_KEY:
+        providers.append(("gemini", gemini_llm))
+    if settings.OPENROUTER_API_KEY:
+        providers.append(("openrouter", openrouter_llm))
+    if settings.GROQ_API_KEY:
+        providers.append(("groq", groq_llm))
+    
+    if not providers:
+        raise Exception("No LLM API keys configured")
+    
+    last_error = None
+    for provider_name, llm in providers:
+        for attempt in range(3):
+            try:
+                if attempt > 0:
+                    wait_time = min(2 ** attempt, 30)
+                    logger.info(f"retry_{provider_name}_attempt_{attempt + 1}", wait=wait_time)
+                    await asyncio.sleep(wait_time)
+                
+                response = await llm.ainvoke(prompt)
+                logger.info(f"llm_success_{provider_name}")
+                return response.content
+            except Exception as e:
+                error_str = str(e)
+                last_error = e
+                is_rate_limit = "429" in error_str or "rate_limit" in error_str.lower()
+                
+                logger.warning(f"llm_error_{provider_name}", 
+                               attempt=attempt + 1, 
+                               error=error_str[:100],
+                               rate_limit=is_rate_limit)
+                
+                if not is_rate_limit and attempt >= 2:
+                    break
+                    
+                if attempt < 2:
+                    continue
+    
+    raise Exception(f"All LLM providers failed. Last error: {last_error}")
 
-async def codegen_node(state: NexusState) -> NexusState:
+
+async def codegen_node(state: OrqestraState) -> OrqestraState:
     """
     Generates integration code based on plan and docs.
     On retry, uses evaluation_notes to improve.
@@ -47,50 +97,137 @@ async def codegen_node(state: NexusState) -> NexusState:
     retry_context = ""
     if retry > 0 and state.get("evaluation_notes"):
         retry_context = f"""
-PREVIOUS ATTEMPT FEEDBACK (attempt {retry}):
-{state["evaluation_notes"]}
+PREVIOUS ATTEMPT {retry} FAILED:
+  Score: {state.get("quality_score", 0)}/10
+  Issues identified: {state["evaluation_notes"]}
 
-Previous code had these issues — analyze and fix ALL of them in this attempt.
+INSTRUCTIONS FOR THIS ATTEMPT:
+  - Address EVERY issue listed above
+  - Do not repeat the same mistakes
+  - Be more thorough with error handling
+  - Ensure all authentication is complete
+  - Double check against the integration steps
 """
 
-    if state["context"]:
-        prompt = f"""You are NEXUS, an expert API integration engineer.
+    try:
+        # Now build prompt — both branches always define prompt
+        if state["context"]:
+            pr_ask = ""
+            if state.get("repo_url"):
+                pr_ask = "## Ready for PR\nI have analyzed your repository and prepared the integration. Are you ready for me to create the Pull Request? If you allow it, please click the **Create PR in repo** button below."
+            else:
+                pr_ask = "## Next Steps\n[what the developer needs to do to use this code]"
 
-Integration Request: {state["user_input"]}
-API: {state["api_name"]}
-Goal: {state["integration_goal"]}
-Language: {state["language"]}
+            # Surgical repair vs New integration
+            is_repair = state.get("source") == "repair"
+            if is_repair:
+                error_reason = state.get("error_reason", "")
+                existing_content = state.get("existing_file_content", "")
 
-Integration Steps:
-{steps_text}
+                import re
+                line_match = re.search(r"line (\d+)", error_reason)
+                line_num = int(line_match.group(1)) if line_match else None
 
-API Documentation:
-{state["context"]}
-{retry_context}
-Generate complete, production-ready {state["language"]} code.
+                if line_num and existing_content:
+                    lines = existing_content.split("\n")
+                    start = max(0, line_num - 5)
+                    end = min(len(lines), line_num + 5)
+                    broken_snippet = "\n".join(lines[start:end])
 
+                    instruction_block = f"""
+CRITICAL INSTRUCTION (HOLE-FILLING REPAIR):
+- The code at line {line_num} is broken: {error_reason}.
+- I have provided a 10-line window around the error below.
+- YOUR TASK: Fix the error and return ONLY the corrected 10-line block.
+- DO NOT return the whole file.
+- DO NOT change any other lines.
+- MATCH THE EXACT INDENTATION of the original lines.
+- If the fix requires fewer than 5 lines, return just those lines.
+- If the fix is bigger (missing try/except, new imports, new functions), return moderate scope.
+"""
+                    repo_section = f"""
+BROKEN CODE WINDOW (Lines {start+1} to {end}):
+```python
+{broken_snippet}
+```
+{instruction_block}
+"""
+                else:
+                    instruction_block = f"""
+CRITICAL INSTRUCTION (SURGICAL REPAIR):
+- Analyze the error: {error_reason}
+- Determine fix scope:
+  * minimal (1-5 lines): syntax typo, missing comma, wrong param → fix exact lines only
+  * moderate (5-30 lines): missing try/except, wrong API call → fix section
+  * complete (full file): major restructuring, new imports → return full file
+- RETURN ONLY THE MINIMAL CHANGES needed. Do not rewrite working code.
+- If the error is minor (typo, syntax), return just the fixed line(s).
+"""
+                    repo_section = f"""
+EXISTING CODE:
+```python
+{existing_content[:8000]}
+```
+{instruction_block}
+"""
+            else:
+                # New Integration
+                instruction_block = f"""
+CRITICAL INSTRUCTION (NEW INTEGRATION):
+- ADD your new {state.get("api_name", "API")} integration code.
+- If the file exists, append your code to it in a clean way.
+- Preserve all existing imports and functions.
+"""
+                repo_section = f"""
+REPOSITORY CONTEXT:
+{state["repo_context"]}
+
+EXISTING FILE CONTENT (target: {state.get("target_file", "integrations.py")}):
+```python
+{state.get("existing_file_content", "")[:4000]}
+```
+{instruction_block}
+"""
+
+            requirements_block = ""
+            if not is_repair:
+                requirements_block = """
 Requirements:
 - Include all authentication setup
 - Handle all error cases with try/except
 - Add clear comments explaining each section
 - Follow the integration steps exactly
 - Make code immediately usable
+"""
+
+            prompt = f"""You are ORQESTRA, an expert API integration engineer.
+
+Integration Request: {state["user_input"]}
+API: {state["api_name"]}
+Goal: {state["integration_goal"]}
+Language: {state["language"]}
+
+API Documentation:
+{state["context"]}
+{repo_section}
+{retry_context}
+
+{requirements_block}
 
 Format response as:
 ## Integration Code
 
 ```{state["language"]}
-[your code here]
+[your fixed code block here]
 ```
 
 ## How It Works
-[brief explanation of the code]
+[brief explanation of the fix]
 
-## Next Steps
-[what the developer needs to do to use this code]"""
+{pr_ask}"""
 
-    else:
-        prompt = f"""You are NEXUS, an intelligent API integration assistant.
+        else:
+            prompt = f"""You are ORQESTRA, an intelligent API integration assistant.
 
 User Question: {state["user_input"]}
 {retry_context}
@@ -98,20 +235,31 @@ Provide a clear, detailed, developer-friendly response.
 If this involves code, include working examples.
 Be practical and actionable."""
 
-    try:
         content = await get_llm_response(prompt)
+
+        track_llm_call(
+            name="codegen",
+            model="openrouter-free-gemini",
+            prompt=prompt,
+            response=content,
+            metadata={
+                "api_name": state.get("api_name", ""),
+                "retry": retry
+            }
+        )
+
         validated = await validate_agent_response(
             content,
             api_name=state.get("api_name", "")
         )
-        state["generated_code"] = validated 
+        state["generated_code"] = validated
         logger.info("codegen_node_complete",
-                    length=len(response.content),
+                    length=len(validated),
                     retry=retry)
 
     except Exception as e:
         logger.error("codegen_node_failed", error=str(e))
-        state["generated_code"] = f"I encountered an error generating the integration. Please try again. Error: {str(e)}"
+        state["generated_code"] = "I encountered an issue generating the integration. Please try again."
         state["error"] = str(e)
 
     return state
