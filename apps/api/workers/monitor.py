@@ -1,6 +1,6 @@
 """
 ORQESTRA Integration Monitor
-Runs every 10 minutes to check integration health
+Runs every 5 minutes to check integration health
 """
 
 import asyncio
@@ -116,6 +116,11 @@ async def check_docs_drift(integration: Integration) -> tuple[bool, str, str]:
             
             stored_hash = integration.docs_hash or ""
             
+            if not integration.docs_hash:
+                integration.docs_hash = new_hash
+                logger.info("docs_hash_initialized", api=api_name, hash=new_hash[:16])
+                return False, "", new_hash
+            
             if new_hash != stored_hash:
                 logger.warning("docs_drift_detected", api=api_name, old_hash=stored_hash[:12], new_hash=new_hash[:12])
                 
@@ -210,12 +215,47 @@ async def check_code_health(integration: Integration, db: AsyncSession) -> tuple
 
 
 
-async def check_single_integration(integration: Integration, db: AsyncSession, ctx):
+async def check_single_integration(integration: Integration, db: AsyncSession):
     """Check a single integration and trigger repair if needed"""
+    from workers.repair import repair_integration_direct
+
     integration.last_checked = datetime.now(timezone.utc)
     
     logger.info("checking_integration", name=integration.name, status=integration.status, failure_count=integration.failure_count, repo_url=integration.repo_url)
-    
+
+    # ── PR pending: check if PR was merged (code on main branch fixed) ──
+    if integration.status == "pr_pending":
+        code_ok, code_msg = await check_code_health(integration, db)
+        if code_ok:
+            integration.status = "healthy"
+            integration.failure_count = 0
+            logger.info("pr_merged_integration_healthy", name=integration.name)
+        else:
+            logger.info("pr_not_merged_yet", name=integration.name, msg=code_msg)
+        return
+
+    if integration.status == "healing":
+        code_ok, code_msg = await check_code_health(integration, db)
+        if code_ok:
+            integration.status = "healthy"
+            integration.failure_count = 0
+            integration.repair_attempts = 0
+            logger.info("healing_code_already_fixed", name=integration.name)
+            return
+
+        if integration.repair_attempts >= 4:
+            integration.status = "failed"
+            logger.info("healing_exhausted_marking_failed", name=integration.name, attempts=integration.repair_attempts)
+            return
+
+        logger.info("integration_repair_stuck_restarting", name=integration.name)
+        integration.status = "broken"
+        integration.repair_attempts = 0
+
+    elif integration.status in ("broken", "failed"):
+        logger.info("integration_already_in_repair", name=integration.name, status=integration.status)
+        return
+
     is_healthy = True
     error_details = []
     
@@ -258,11 +298,7 @@ async def check_single_integration(integration: Integration, db: AsyncSession, c
             errors=error_msg
         )
         
-        # Allow repair if: failures >= 3 AND (not healing OR is broken for too long)
-        should_repair = (
-            integration.failure_count >= 3 and 
-            (integration.status != "healing" or (integration.status == "healing" and integration.repair_attempts == 0))
-        )
+        should_repair = integration.failure_count >= 3
         
         if should_repair:
             integration.status = "broken"
@@ -283,15 +319,12 @@ async def check_single_integration(integration: Integration, db: AsyncSession, c
                 except Exception as e:
                     logger.warning("notification_failed", error=str(e))
             
-            await ctx["redis"].enqueue_job(
-                "repair_integration",
-                str(integration.id)
-            )
+            asyncio.create_task(repair_integration_direct(str(integration.id)))
             logger.warning("repair_triggered", name=integration.name, failures=integration.failure_count)
     else:
         if integration.status != "healthy":
             integration.status = "healthy"
             integration.failure_count = 0
             logger.info("integration_recovered", name=integration.name)
-    
-    await db.commit()
+            integration.failure_count = 0
+            logger.info("integration_recovered", name=integration.name)

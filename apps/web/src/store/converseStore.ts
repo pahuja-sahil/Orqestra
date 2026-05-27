@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 
 interface Message {
   id: string
@@ -10,44 +11,64 @@ interface Message {
   hasCode?: boolean
   apiName?: string
   isCompleted?: boolean
+  awaitingPrConfirm?: boolean
 }
 
 interface ConverseStore {
   messages: Message[]
-  addMessage: (message: Omit<Message, "id" | "timestamp">) => void
+  addMessage: (message: Omit<Message, "id" | "timestamp">) => string
   markPrDone: (id: string) => void
   markCompleted: (id: string) => void
+  setAwaitingPrConfirm: (id: string, value: boolean) => void
   clearMessages: () => void
 }
 
-export const useConverseStore = create<ConverseStore>((set) => ({
-  messages: [],
+export const useConverseStore = create<ConverseStore>()(
+  persist(
+    (set) => ({
+      messages: [],
 
-  addMessage: (message) =>
-    set((state) => ({
-      messages: [
-        ...state.messages,
-        {
-          ...message,
-          id: crypto.randomUUID(),
-          timestamp: new Date(),
-        },
-      ],
-    })),
+      addMessage: (message) => {
+        const id = crypto.randomUUID()
+        set((state) => ({
+          messages: [
+            ...state.messages,
+            {
+              ...message,
+              id,
+              timestamp: new Date(),
+            },
+          ],
+        }))
+        return id
+      },
 
-  markPrDone: (id) =>
-    set((state) => ({
-      messages: state.messages.map((m) =>
-        m.id === id ? { ...m, isPrResult: true } : m
-      ),
-    })),
+      markPrDone: (id) =>
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === id ? { ...m, isPrResult: true } : m
+          ),
+        })),
 
-  markCompleted: (id) =>
-    set((state) => ({
-      messages: state.messages.map((m) =>
-        m.id === id ? { ...m, isCompleted: true } : m
-      ),
-    })),
+      markCompleted: (id) =>
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === id ? { ...m, isCompleted: true } : m
+          ),
+        })),
 
-  clearMessages: () => set({ messages: [] }),
-}))
+      setAwaitingPrConfirm: (id, value) =>
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === id ? { ...m, awaitingPrConfirm: value } : m
+          ),
+        })),
+
+      clearMessages: () => set({ messages: [] }),
+    }),
+    {
+      name: "orqestra-converse",
+      partialize: (state) => ({ messages: state.messages }),
+    }
+  )
+)

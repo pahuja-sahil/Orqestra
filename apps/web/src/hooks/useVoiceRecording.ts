@@ -87,17 +87,18 @@ const connectWebSocket = useCallback((): Promise<void> => {
           setVoiceState("responding")
           break
 
-        case "audio":
-          const audioBytes = atob(data.data)
-          const audioArray = new Uint8Array(audioBytes.length)
-          for (let i = 0; i < audioBytes.length; i++) {
-            audioArray[i] = audioBytes.charCodeAt(i)
+        case "audio": {
+          const binaryStr = atob(data.data)
+          const audioArray = new Uint8Array(binaryStr.length)
+          for (let i = 0; i < binaryStr.length; i++) {
+            audioArray[i] = binaryStr.charCodeAt(i)
           }
           const audioBlob = new Blob([audioArray], { type: "audio/mpeg" })
           const audioUrl = URL.createObjectURL(audioBlob)
           const audio = new Audio(audioUrl)
           audio.play()
           break
+        }
 
         case "complete":
           setVoiceState("idle")

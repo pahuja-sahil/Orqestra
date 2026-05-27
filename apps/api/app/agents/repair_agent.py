@@ -33,7 +33,7 @@ async def repair_integration_code(
     
     language_lower = language.lower()
     
-    prompt = f"""You are an expert API integration repair specialist. Your job is to fix broken integration code.
+    prompt = f"""You are a precise code repair specialist. Your ONLY job is to fix the exact problem described below. Do NOT reformat, restructure, or improve the code.
 
 ## CONTEXT
 - API Name: {api_name}
@@ -52,35 +52,18 @@ async def repair_integration_code(
 ## API DOCUMENTATION CONTEXT
 {api_docs_context}
 
-## YOUR TASK
-1. Analyze the error and understand what went wrong
-2. Determine the fix scope:
-   - **minimal**: Just fix the specific line causing syntax error (1-5 lines)
-   - **moderate**: Fix a section (function/method) that has issues (5-20 lines)
-   - **complete**: Rewrite the entire integration if API changed significantly
-3. Generate the fixed code that actually works
-4. Ensure the code is syntactically correct and follows best practices
+## RULES (ABSOLUTE REQUIRED)
+1. Change ONLY the specific line(s) causing the error
+2. Keep EVERY other line EXACTLY IDENTICAL — same spacing, same comments, same formatting
+3. Do NOT add, remove, or reorder any line that was not part of the error
+4. Do NOT reformat, rename variables, add comments, or "improve" anything
+5. If the error is a simple syntax error, ONLY fix the broken syntax
+6. If the API docs changed, ONLY update the affected function(s) — leave everything else untouched
 
 ## OUTPUT FORMAT
-Respond in this exact format:
-
-## ANALYSIS
-[Explain what went wrong and why]
-
-## FIX SCOPE
-minimal/moderate/complete
-
-## FIXED CODE
 ```{language_lower}
-[Your fixed code here - complete and working]
+[EXACT original code with ONLY the error fixed — nothing else changed]
 ```
-
-IMPORTANT:
-- If this is a simple syntax error, fix it directly (minimal scope)
-- If API changed, update accordingly (moderate or complete)
-- Return COMPLETE working code, not just the fix
-- Do not include any explanations outside the ANALYSIS section
-- The code must be syntactically valid and runnable
 """
     
     try:
@@ -88,47 +71,45 @@ IMPORTANT:
         
         response = await get_llm_response(prompt)
         
-        analysis_match = re.search(r"## ANALYSIS\s*\n(.*?)(?=## FIX SCOPE)", response, re.DOTALL | re.IGNORECASE)
-        scope_match = re.search(r"## FIX SCOPE\s*\n(minimal|moderate|complete)", response, re.IGNORECASE)
-        code_match = re.search(r"## FIXED CODE\s*```" + language_lower + r"\s*\n(.*?)```", response, re.DOTALL | re.IGNORECASE)
-        
+        code_match = re.search(r"```" + language_lower + r"\s*\n(.*?)```", response, re.DOTALL | re.IGNORECASE)
         if not code_match:
-            code_match = re.search(r"## FIXED CODE\s*```.*?\n(.*?)```", response, re.DOTALL | re.IGNORECASE)
+            code_match = re.search(r"```.*?\n(.*?)```", response, re.DOTALL | re.IGNORECASE)
         
-        analysis = analysis_match.group(1).strip() if analysis_match else "Analysis not provided"
-        fix_scope = scope_match.group(1).lower() if scope_match else "complete"
         fixed_code = code_match.group(1).strip() if code_match else ""
         
         if not fixed_code:
             logger.error("repair_agent_no_code", api=api_name, response=response[:200])
             return {
                 "success": False,
-                "analysis": "Failed to extract code from LLM response",
-                "fix_scope": "complete",
-                "fixed_code": ""
+                "fixed_code": "",
+                "error": "Failed to extract code from LLM response"
             }
         
-        fixed_code = fixed_code.strip()
+        # For syntax errors, verify minimal change
+        if error_type == "syntax_error" and fixed_code:
+            orig_lines = current_code.strip().split("\n")
+            fix_lines = fixed_code.split("\n")
+            if len(orig_lines) == len(fix_lines):
+                changed = sum(1 for a, b in zip(orig_lines, fix_lines) if a != b)
+                if changed > 3:
+                    logger.warning("repair_agent_too_many_changes", api=api_name, changed=changed)
         
         if language_lower == "python":
             try:
                 compile(fixed_code, '<string>', 'exec')
-                logger.info("repair_agent_code_valid", api=api_name, scope=fix_scope)
+                logger.info("repair_agent_code_valid", api=api_name, code_lines=len(fixed_code.split("\n")))
             except SyntaxError as se:
                 logger.warning("repair_agent_syntax_invalid", api=api_name, error=str(se))
                 return {
                     "success": False,
-                    "analysis": f"Generated code has syntax error: {se}",
-                    "fix_scope": fix_scope,
-                    "fixed_code": ""
+                    "fixed_code": "",
+                    "error": f"Generated code has syntax error: {se}"
                 }
         
-        logger.info("repair_agent_success", api=api_name, scope=fix_scope, code_lines=len(fixed_code.split("\n")))
+        logger.info("repair_agent_success", api=api_name, code_lines=len(fixed_code.split("\n")))
         
         return {
             "success": True,
-            "analysis": analysis,
-            "fix_scope": fix_scope,
             "fixed_code": fixed_code
         }
         

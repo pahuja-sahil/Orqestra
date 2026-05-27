@@ -4,9 +4,32 @@ import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
 import { useVoiceRecording } from "@/hooks/useVoiceRecording"
 import { useConverseStore } from "@/store/converseStore"
-import { Mic, MicOff, Send, RotateCcw, Volume2, MessageSquare, GitBranch, Loader2, CheckCircle2, XCircle, ExternalLink } from "lucide-react"
+import {
+  Mic, MicOff, Send, RotateCcw, Volume2, MessageSquare,
+  GitBranch, Loader2, CheckCircle2, XCircle, ExternalLink, Check, X
+} from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import api from "@/lib/api"
+
+const REPO_PATTERN = /^(?:https?:\/\/github\.com\/)?([\w.-]+\/[\w.-]+)(?:\/)?$/
+const AFFIRMATIVE_PATTERN = /^(?:yes|yeah|sure|ok|okay|go ahead|proceed|yep|y|do it|let's go|please|create pr)$/i
+
+function detectRepoUrl(text: string): string | null {
+  const trimmed = text.trim()
+  const match = trimmed.match(REPO_PATTERN)
+  if (match) {
+    const raw = match[0]
+    if (raw.startsWith("http")) return raw
+    return `https://github.com/${raw.replace(/^https?:\/\/github\.com\//, "")}`
+  }
+  return null
+}
+
+function normalizeRepoUrl(url: string): string {
+  const trimmed = url.trim()
+  if (trimmed.startsWith("http")) return trimmed
+  return `https://github.com/${trimmed.replace(/^https?:\/\/github\.com\//, "")}`
+}
 
 const processingMessages: Record<string, string[]> = {
   transcribing: ["Listening...", "Converting speech...", "Processing voice..."],
@@ -53,6 +76,23 @@ function ProcessingAnimation({ stage, isDark }: { stage: string; isDark: boolean
   )
 }
 
+function CodeBlock({ children, className, isDark }: { children: React.ReactNode; className?: string; isDark: boolean }) {
+  const isBlock = className?.includes("language-")
+  const codeText = String(children).trim()
+  const [copied, setCopied] = useState(false)
+  return isBlock ? (
+    <div className="relative my-2 group">
+      <button onClick={() => { navigator.clipboard.writeText(codeText); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+        className={`absolute top-2 right-2 text-xs px-2.5 py-1 rounded-lg font-medium opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? "bg-white/10 text-slate-400 hover:text-white hover:bg-white/20 border border-white/10" : "bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200"}`}>
+        {copied ? "Copied!" : "Copy"}
+      </button>
+      <pre className={`p-4 pt-10 rounded-xl text-sm font-mono tracking-tight overflow-x-auto ${isDark ? "bg-[#0b0614] text-slate-300 border border-white/10" : "bg-slate-50 text-slate-800 border border-slate-200"}`}><code>{children}</code></pre>
+    </div>
+  ) : (
+    <code className={`px-1.5 py-0.5 rounded text-[13px] font-mono ${isDark ? "bg-white/10 text-violet-300" : "bg-violet-50 text-violet-700"}`}>{children}</code>
+  )
+}
+
 function OrqestraResponse({ content, isDark }: { content: string; isDark: boolean }) {
   return (
     <ReactMarkdown
@@ -65,22 +105,7 @@ function OrqestraResponse({ content, isDark }: { content: string; isDark: boolea
         ul: ({ children }) => <ul className="space-y-1.5 mb-3 ml-0 list-none">{children}</ul>,
         ol: ({ children }) => <ol className="space-y-1.5 mb-3 list-decimal list-inside">{children}</ol>,
         li: ({ children }) => <li className={`flex items-start gap-2 text-sm ${isDark ? "text-slate-200" : "text-slate-700"}`}><span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-violet-500" /><span className="flex-1">{children}</span></li>,
-        code: ({ children, className }) => {
-          const isBlock = className?.includes("language-")
-          const codeText = String(children).trim()
-          const [copied, setCopied] = useState(false)
-          return isBlock ? (
-            <div className="relative my-2">
-              <button onClick={() => { navigator.clipboard.writeText(codeText); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-                className={`absolute top-2 right-2 text-xs px-2.5 py-1 rounded-lg font-medium ${isDark ? "bg-white/10 text-slate-400 hover:text-white hover:bg-white/20 border border-white/10" : "bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200"}`}>
-                {copied ? "Copied!" : "Copy"}
-              </button>
-              <pre className={`p-4 pt-10 rounded-xl text-sm font-mono tracking-tight overflow-x-auto ${isDark ? "bg-[#0b0614] text-slate-300 border border-white/10" : "bg-slate-50 text-slate-800 border border-slate-200"}`}><code>{children}</code></pre>
-            </div>
-          ) : (
-            <code className={`px-1.5 py-0.5 rounded text-[13px] font-mono ${isDark ? "bg-white/10 text-violet-300" : "bg-violet-50 text-violet-700"}`}>{children}</code>
-          )
-        },
+        code: ({ children, className }) => <CodeBlock isDark={isDark} className={className}>{children}</CodeBlock>,
         a: ({ href, children }) => <a href={href ?? ""} target="_blank" rel="noopener noreferrer" className={`underline underline-offset-2 ${isDark ? "text-violet-400 hover:text-violet-300" : "text-violet-600 hover:text-violet-700"}`}>{children}</a>,
         em: ({ children }) => <em className={`not-italic text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>{children}</em>,
       }}>
@@ -91,54 +116,65 @@ function OrqestraResponse({ content, isDark }: { content: string; isDark: boolea
 
 function TypewriterText({ content, isDark, isCompleted }: { content: string; isDark: boolean; isCompleted?: boolean }) {
   const [displayedContent, setDisplayedContent] = useState("")
-  const [index, setIndex] = useState(0)
+  const indexRef = useRef(0)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (isCompleted) {
-      setDisplayedContent(content)
-      setIndex(content.length)
-      return
-    }
-    if (index < content.length) {
-      const timeout = setTimeout(() => {
-        setDisplayedContent(prev => prev + content[index])
-        setIndex(prev => prev + 1)
-      }, 3)
-      return () => clearTimeout(timeout)
-    }
-  }, [index, content, isCompleted])
+    if (isCompleted) return
+    indexRef.current = 0
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDisplayedContent("")
 
-  if (isCompleted) return <OrqestraResponse content={content} isDark={isDark} />
-  return <OrqestraResponse content={displayedContent} isDark={isDark} />
+    const CHUNK = 8
+    const INTERVAL = 4
+
+    const tick = () => {
+      if (indexRef.current >= content.length) return
+      const next = Math.min(indexRef.current + CHUNK, content.length)
+      setDisplayedContent(content.slice(0, next))
+      indexRef.current = next
+      timerRef.current = setTimeout(tick, INTERVAL)
+    }
+
+    timerRef.current = setTimeout(tick, INTERVAL)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [content, isCompleted])
+
+  return <OrqestraResponse content={isCompleted ? content : displayedContent} isDark={isDark} />
 }
 
-function validateRepoUrl(url: string): string | null {
-  const trimmed = url.trim()
-  if (!trimmed) return "Repository URL is required"
-  const patterns = [
-    /^https?:\/\/github\.com\/[\w.-]+\/[\w.-]+(?:\/)?$/,
-    /^[\w.-]+\/[\w.-]+$/,
-  ]
-  if (!patterns.some(p => p.test(trimmed))) {
-    return "Invalid repo URL. Use format: github.com/owner/repo or owner/repo"
-  }
-  return null
-}
-
-function normalizeRepoUrl(url: string): string {
-  const trimmed = url.trim()
-  if (trimmed.startsWith("http")) return trimmed
-  return `https://github.com/${trimmed.replace(/^https?:\/\/github\.com\//, "")}`
+function PrConfirmButtons({ isDark, onConfirm, onDeny, loading }: {
+  isDark: boolean; onConfirm: () => void; onDeny: () => void; loading: boolean
+}) {
+  return (
+    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
+      <button onClick={onConfirm} disabled={loading}
+        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${
+          loading
+            ? (isDark ? "border-violet-900 text-violet-600" : "border-violet-200 text-violet-400")
+            : (isDark ? "border-green-800 text-green-400 hover:bg-green-950/40" : "border-green-300 text-green-600 hover:bg-green-50")
+        }`}>
+        {loading ? <><Loader2 size={12} className="animate-spin" /> Creating...</> : <><Check size={12} /> Yes, create PR</>}
+      </button>
+      <button onClick={onDeny} disabled={loading}
+        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${
+          isDark ? "border-slate-700 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-500 hover:bg-slate-100"
+        }`}>
+        <X size={12} /> Not yet
+      </button>
+    </div>
+  )
 }
 
 export default function ConversePage() {
   const { isDark } = useThemeStore()
   const { accessToken } = useAuthStore()
-  const { messages, addMessage, markPrDone, clearMessages } = useConverseStore()
+  const { messages, addMessage, markPrDone, setAwaitingPrConfirm, clearMessages } = useConverseStore()
   const [textInput, setTextInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [prLoadingId, setPrLoadingId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const repoInputRef = useRef<HTMLInputElement>(null)
   const [githubConnected, setGithubConnected] = useState<boolean | null>(null)
   const [repoUrl, setRepoUrl] = useState("")
   const [repoStatus, setRepoStatus] = useState<"idle" | "validating" | "valid" | "invalid">("idle")
@@ -152,7 +188,7 @@ export default function ConversePage() {
 
   useEffect(() => {
     if (response) addMessage({ type: "orqestra", content: response, inputMode: "voice" })
-  }, [response])
+  }, [response, addMessage])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -168,17 +204,103 @@ export default function ConversePage() {
     checkGithub()
   }, [accessToken])
 
+  const extractCodeFromMarkdown = (content: string): string | null => {
+    const match = content.match(/```(?:\w+)?\n([\s\S]*?)```/)
+    return match ? match[1].trim() : null
+  }
+
+  const findLastCodeMessage = useCallback((): { id: string; content: string; apiName?: string } | null => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i]
+      if (m.type === "orqestra" && m.content.includes("```") && !m.isPrResult) {
+        return { id: m.id, content: m.content, apiName: m.apiName }
+      }
+    }
+    return null
+  }, [messages])
+
+  const executeCreatePR = useCallback(async (msgId: string, content: string, apiName?: string) => {
+    if (!repoUrl || prLoadingId) return
+    setPrLoadingId(msgId)
+    try {
+      addMessage({ type: "orqestra", content: "⏳ Analyzing repository and preparing PR...", inputMode: "text" })
+      const analyzeRes = await api.post("/api/github/analyze", { repo_url: repoUrl }, { headers: { Authorization: `Bearer ${accessToken}` } })
+      const repoData = analyzeRes.data
+      const rawCode = extractCodeFromMarkdown(content)
+      if (!rawCode) { setPrLoadingId(null); return }
+      addMessage({ type: "orqestra", content: "⏳ Creating pull request...", inputMode: "text" })
+      const prRes = await api.post("/api/github/create-pr", {
+        repo_path: repoData.repo_path, api_name: repoData.repo_name,
+        real_api_name: apiName || repoData.repo_name, target_file: repoData.best_file,
+        generated_code: rawCode, default_branch: repoData.default_branch, repo_url: repoUrl,
+      }, { headers: { Authorization: `Bearer ${accessToken}` } })
+      markPrDone(msgId)
+      setAwaitingPrConfirm(msgId, false)
+      addMessage({ type: "orqestra", content: `✅ PR created successfully! [View PR on GitHub](${prRes.data.pr_url})`, inputMode: "text", isPrResult: true })
+    } catch (err: unknown) {
+      markPrDone(msgId)
+      setAwaitingPrConfirm(msgId, false)
+      const e = err as { response?: { data?: { detail?: string } }; message?: string }
+      const errorMsg = e?.response?.data?.detail || e?.message || "Failed to create PR"
+      addMessage({ type: "orqestra", content: `❌ Failed to create PR: ${errorMsg}`, inputMode: "text", isPrResult: true })
+    } finally { setPrLoadingId(null) }
+  }, [repoUrl, prLoadingId, accessToken, addMessage, markPrDone, setAwaitingPrConfirm])
+
+  const checkResponseForPrAsk = useCallback((responseText: string, msgId: string) => {
+    const prKeywords = /ready for PR|create.*PR|pull request|shall i|should i|do you want|are you ready/i
+    if (prKeywords.test(responseText) && responseText.includes("```")) {
+      setAwaitingPrConfirm(msgId, true)
+    }
+  }, [setAwaitingPrConfirm])
+
   const handleTextSubmit = useCallback(async (overrideText?: string) => {
     const userText = overrideText || textInput
     if (!userText.trim() || isSubmitting) return
     setTextInput("")
     addMessage({ type: "user", content: userText, inputMode: "text" })
     setIsSubmitting(true)
+
     try {
-      const res = await api.post("/api/converse/process", { text: userText, repo_url: repoUrl }, { headers: { Authorization: `Bearer ${accessToken}` } })
-      addMessage({ type: "orqestra", content: res.data.response, inputMode: "text", apiName: res.data.api_name || "" })
-    } catch (err: any) {
-      const errorMsg = err?.response?.data?.detail || err?.message || ""
+      const detectedRepoUrl = detectRepoUrl(userText)
+      const isAffirmative = AFFIRMATIVE_PATTERN.test(userText.trim())
+
+      if (isAffirmative) {
+        const lastCode = findLastCodeMessage()
+        if (lastCode) {
+          setIsSubmitting(false)
+          await executeCreatePR(lastCode.id, lastCode.content, lastCode.apiName)
+          return
+        }
+      }
+
+      if (detectedRepoUrl && !repoUrl) {
+        setRepoUrl(detectedRepoUrl)
+        setRepoStatus("validating")
+        addMessage({ type: "orqestra", content: `🔗 Detected repository URL: **${detectedRepoUrl}**`, inputMode: "text" })
+        try {
+          const analyzeRes = await api.post("/api/github/analyze", { repo_url: detectedRepoUrl }, { headers: { Authorization: `Bearer ${accessToken}` } })
+          setRepoStatus("valid")
+          addMessage({ type: "orqestra", content: `✅ Repository connected: **${analyzeRes.data.repo_path}** (${analyzeRes.data.language})`, inputMode: "text" })
+          const lastUserMsg = [...messages].reverse().find(m => m.type === "user" && m.inputMode === "text")
+          const intentText = lastUserMsg ? lastUserMsg.content : `Proceed with integration in ${detectedRepoUrl}`
+          const res = await api.post("/api/converse/process", {
+            text: intentText,
+            repo_url: detectedRepoUrl,
+          }, { headers: { Authorization: `Bearer ${accessToken}` } })
+          const msgId = addMessage({ type: "orqestra", content: res.data.response, inputMode: "text", apiName: res.data.api_name || "" })
+          checkResponseForPrAsk(res.data.response, msgId)
+        } catch {
+          setRepoStatus("invalid")
+          addMessage({ type: "orqestra", content: "❌ Could not access repository. Check the URL and ensure GitHub is connected in Settings.", inputMode: "text" })
+        }
+      } else {
+        const res = await api.post("/api/converse/process", { text: userText, repo_url: repoUrl }, { headers: { Authorization: `Bearer ${accessToken}` } })
+        const msgId = addMessage({ type: "orqestra", content: res.data.response, inputMode: "text", apiName: res.data.api_name || "" })
+        checkResponseForPrAsk(res.data.response, msgId)
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } }; message?: string }
+      const errorMsg = e?.response?.data?.detail || e?.message || ""
       if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
         addMessage({ type: "orqestra", content: "ORQESTRA is thinking hard right now — rate limit reached. Please retry in a moment.", inputMode: "text" })
       } else if (errorMsg.includes("blocked") || errorMsg.includes("safety")) {
@@ -187,7 +309,7 @@ export default function ConversePage() {
         addMessage({ type: "orqestra", content: "Something went wrong. Please try again.", inputMode: "text" })
       }
     } finally { setIsSubmitting(false) }
-  }, [textInput, repoUrl, accessToken, isSubmitting, addMessage])
+  }, [textInput, repoUrl, accessToken, isSubmitting, addMessage, executeCreatePR, checkResponseForPrAsk, messages, findLastCodeMessage])
 
   const handleMicClick = () => {
     if (voiceState === "idle") startRecording()
@@ -198,53 +320,29 @@ export default function ConversePage() {
     reset(); setTextInput(""); setPrLoadingId(null); clearMessages()
   }, [reset, clearMessages])
 
-  const extractCodeFromMarkdown = (content: string): string | null => {
-    const match = content.match(/```(?:\w+)?\n([\s\S]*?)```/)
-    return match ? match[1].trim() : null
-  }
-
-  const handleCreatePR = useCallback(async (msg: { id: string; content: string; apiName?: string; isPrResult?: boolean }) => {
-    if (!repoUrl || prLoadingId || msg.isPrResult) return
-    setPrLoadingId(msg.id)
-    try {
-      addMessage({ type: "orqestra", content: "⏳ Analyzing repository and preparing PR...", inputMode: "text" })
-      const analyzeRes = await api.post("/api/github/analyze", { repo_url: repoUrl }, { headers: { Authorization: `Bearer ${accessToken}` } })
-      const repoData = analyzeRes.data
-      const rawCode = extractCodeFromMarkdown(msg.content)
-      if (!rawCode) { setPrLoadingId(null); return }
-      addMessage({ type: "orqestra", content: "⏳ Creating pull request...", inputMode: "text" })
-      const prRes = await api.post("/api/github/create-pr", {
-        repo_path: repoData.repo_path, api_name: repoData.repo_name,
-        real_api_name: msg.apiName || repoData.repo_name, target_file: repoData.best_file,
-        generated_code: rawCode, default_branch: repoData.default_branch, repo_url: repoUrl,
-      }, { headers: { Authorization: `Bearer ${accessToken}` } })
-      markPrDone(msg.id)
-      addMessage({ type: "orqestra", content: `✅ PR created successfully! [View PR on GitHub](${prRes.data.pr_url})`, inputMode: "text", isPrResult: true })
-    } catch (err: any) {
-      markPrDone(msg.id)
-      const errorMsg = err?.response?.data?.detail || err?.message || "Failed to create PR"
-      addMessage({ type: "orqestra", content: `❌ Failed to create PR: ${errorMsg}`, inputMode: "text", isPrResult: true })
-    } finally { setPrLoadingId(null) }
-  }, [repoUrl, prLoadingId, accessToken, addMessage, markPrDone])
-
   const handleRepoSubmit = async () => {
-    const validationError = validateRepoUrl(repoUrl)
-    if (validationError) {
-      setRepoError(validationError)
-      setRepoStatus("invalid")
-      return
-    }
+    const trimmed = repoUrl.trim()
+    if (!trimmed) return
+    const normalized = normalizeRepoUrl(trimmed)
     setRepoStatus("validating")
     setRepoError("")
-    addMessage({ type: "orqestra", content: `🔗 Setting repository: ${normalizeRepoUrl(repoUrl)}`, inputMode: "text" })
+    addMessage({ type: "orqestra", content: `🔗 Validating repository: ${normalized}`, inputMode: "text" })
     try {
-      const res = await api.post("/api/github/analyze", { repo_url: normalizeRepoUrl(repoUrl) }, { headers: { Authorization: `Bearer ${accessToken}` } })
+      const res = await api.post("/api/github/analyze", { repo_url: normalized }, { headers: { Authorization: `Bearer ${accessToken}` } })
       setRepoStatus("valid")
       addMessage({ type: "orqestra", content: `✅ Repository connected: **${res.data.repo_path}** (${res.data.language})`, inputMode: "text" })
+      const lastUserMsg = [...messages].reverse().find(m => m.type === "user" && m.inputMode === "text")
+      const intentText = lastUserMsg ? lastUserMsg.content : `Proceed with integration in ${normalized}`
+      const converseRes = await api.post("/api/converse/process", {
+        text: intentText,
+        repo_url: normalized,
+      }, { headers: { Authorization: `Bearer ${accessToken}` } })
+      const msgId = addMessage({ type: "orqestra", content: converseRes.data.response, inputMode: "text", apiName: converseRes.data.api_name || "" })
+      checkResponseForPrAsk(converseRes.data.response, msgId)
     } catch {
       setRepoStatus("invalid")
       setRepoError("Could not access repository. Check the URL and ensure GitHub is connected.")
-      addMessage({ type: "orqestra", content: `❌ Could not access repository. Check the URL and ensure GitHub is connected in Settings.`, inputMode: "text" })
+      addMessage({ type: "orqestra", content: "❌ Could not access repository. Check the URL and ensure GitHub is connected in Settings.", inputMode: "text" })
     }
   }
 
@@ -261,56 +359,66 @@ export default function ConversePage() {
         <p className={`text-xs ${isDark ? "text-slate-500" : "text-slate-500"}`}>Talk to ORQESTRA — speak or type</p>
       </div>
 
-      <div className="flex-1 flex gap-4 min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row gap-5 min-h-0">
         {/* ─── LEFT PANEL: Input ─── */}
-        <div className="w-[280px] flex-shrink-0 flex flex-col gap-3 overflow-y-auto">
+        <div className="w-full lg:w-1/2 flex-shrink-0 flex flex-col gap-5 overflow-y-auto pr-1">
           {/* GitHub Status + Repo URL */}
-          <div className={`rounded-2xl border p-4 ${cardBg} ${cardBorder}`}>
+          <div className={`rounded-2xl border p-5 ${cardBg} ${cardBorder}`}>
             {githubConnected === null ? (
-              <div className="flex items-center gap-2"><Loader2 size={14} className="animate-spin text-violet-500" /><span className="text-xs text-slate-500">Checking GitHub...</span></div>
+              <div className="flex items-center gap-2">
+                <Loader2 size={14} className="animate-spin text-violet-500" />
+                <span className="text-xs text-slate-500">Checking GitHub...</span>
+              </div>
             ) : githubConnected ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-green-500" />
+                  <CheckCircle2 size={15} className="text-green-500" />
                   <span className={`text-xs font-medium ${isDark ? "text-green-400" : "text-green-600"}`}>GitHub connected</span>
                 </div>
                 <div className="flex gap-2">
-                  <input value={repoUrl} onChange={(e) => { setRepoUrl(e.target.value); setRepoStatus("idle"); setRepoError("") }}
-                    placeholder="owner/repo or full URL"
-                    className={`flex-1 px-3 py-2 rounded-xl text-xs outline-none border ${isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-600" : "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400"} ${repoStatus === "invalid" ? (isDark ? "border-red-500" : "border-red-500") : ""}`} />
+                  <input
+                    ref={repoInputRef}
+                    value={repoUrl}
+                    onChange={(e) => { setRepoUrl(e.target.value); setRepoStatus("idle"); setRepoError("") }}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleRepoSubmit() }}
+                    placeholder="owner/repo or full GitHub URL"
+                    className={`flex-1 px-3 py-2.5 rounded-xl text-xs outline-none border transition-all ${isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-violet-700" : "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-violet-400"} ${repoStatus === "invalid" ? (isDark ? "border-red-500" : "border-red-500") : ""}`} />
                   <button onClick={handleRepoSubmit} disabled={repoStatus === "validating" || !repoUrl.trim()}
-                    className={`p-2 rounded-xl text-white ${repoStatus === "validating" ? "bg-violet-700/50 cursor-not-allowed" : "bg-violet-700 hover:bg-violet-600"}`}>
-                    {repoStatus === "validating" ? <Loader2 size={14} className="animate-spin" /> : <GitBranch size={14} />}
+                    className={`p-2.5 rounded-xl text-white transition-all ${repoStatus === "validating" ? "bg-violet-700/50 cursor-not-allowed" : "bg-violet-700 hover:bg-violet-600"}`}>
+                    {repoStatus === "validating" ? <Loader2 size={15} className="animate-spin" /> : <GitBranch size={15} />}
                   </button>
                 </div>
-                {repoStatus === "valid" && <p className={`text-xs ${isDark ? "text-green-500" : "text-green-600"}`}>✓ Repo connected</p>}
+                {repoStatus === "valid" && <p className={`text-xs flex items-center gap-1 ${isDark ? "text-green-500" : "text-green-600"}`}><CheckCircle2 size={12} /> Repo connected</p>}
                 {repoError && <p className="text-xs text-red-500">{repoError}</p>}
-                {repoUrl && repoStatus !== "invalid" && repoStatus !== "validating" && (
+                {repoUrl && repoStatus === "valid" && (
                   <div className="flex items-center gap-1">
-                    <span className={`text-[10px] ${isDark ? "text-slate-600" : "text-slate-400"}`}>{repoUrl.replace("https://github.com/", "")}</span>
+                    <span className={`text-[10px] font-mono ${isDark ? "text-slate-600" : "text-slate-400"}`}>{repoUrl.replace("https://github.com/", "")}</span>
                     <ExternalLink size={10} className={isDark ? "text-slate-600" : "text-slate-400"} />
                   </div>
                 )}
+                <p className={`text-[10px] leading-relaxed ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+                  You can also type the repo URL directly in chat. I'll auto-detect it.
+                </p>
               </div>
             ) : (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <XCircle size={14} className="text-slate-500" />
+                  <XCircle size={15} className="text-slate-500" />
                   <span className="text-xs text-slate-500">GitHub not connected</span>
                 </div>
-                <a href="/dashboard/settings" className="text-xs font-semibold px-3 py-1.5 rounded-xl border text-violet-500 border-violet-800 hover:bg-violet-950/40">Connect →</a>
+                <a href="/dashboard/settings" className="text-xs font-semibold px-3 py-1.5 rounded-xl border text-violet-500 border-violet-800 hover:bg-violet-950/40 transition-all">Connect →</a>
               </div>
             )}
           </div>
 
           {/* Voice Recording */}
-          <div className={`rounded-2xl border p-5 flex flex-col items-center gap-3 ${cardBg} ${cardBorder}`}>
+          <div className={`rounded-2xl border p-6 flex flex-col items-center gap-4 ${cardBg} ${cardBorder}`}>
             <AnimatePresence mode="wait">
               {voiceState === "idle" && (
-                <motion.div key="idle" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }} className="flex flex-col items-center gap-2">
+                <motion.div key="idle" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }} className="flex flex-col items-center gap-3">
                   <motion.div animate={{ boxShadow: [`0 0 0 0 ${isDark ? "rgba(139,92,246,0.35)" : "rgba(139,92,246,0.25)"}`, `0 0 0 18px rgba(139,92,246,0)`] }} transition={{ duration: 2, repeat: Infinity }} className="rounded-full">
                     <button onClick={handleMicClick} disabled={!isSupported}
-                      className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${isDark ? "border-violet-800 bg-violet-950/60 text-violet-400" : "border-violet-400 bg-violet-50 text-violet-600"}`}>
+                      className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all ${isDark ? "border-violet-800 bg-violet-950/60 text-violet-400 hover:bg-violet-900/60" : "border-violet-400 bg-violet-50 text-violet-600 hover:bg-violet-100"}`}>
                       <Mic size={24} /></button>
                   </motion.div>
                   <p className={`text-xs font-medium ${isDark ? "text-slate-500" : "text-violet-500"}`}>{isSupported ? "Tap to speak" : "Not supported"}</p>
@@ -320,7 +428,7 @@ export default function ConversePage() {
                 <motion.div key="recording" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }} className="flex flex-col items-center gap-3 w-full">
                   <WaveAnimation isDark={isDark} />
                   <button onClick={handleMicClick}
-                    className="w-14 h-14 rounded-full flex items-center justify-center border-2 border-violet-500 bg-violet-700/60 text-white">
+                    className="w-14 h-14 rounded-full flex items-center justify-center border-2 border-violet-500 bg-violet-700/60 text-white transition-all">
                     <MicOff size={20} /></button>
                   <p className={`text-xs font-medium ${isDark ? "text-violet-400" : "text-violet-600"}`}>Recording — tap to stop</p>
                 </motion.div>
@@ -343,14 +451,14 @@ export default function ConversePage() {
           </div>
 
           {/* Text Input */}
-          <div className={`rounded-2xl border p-3 ${cardBg} ${cardBorder}`}>
+          <div className={`rounded-2xl border p-4 ${cardBg} ${cardBorder}`}>
             <div className="flex items-end gap-2">
               <textarea value={textInput} onChange={(e) => setTextInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleTextSubmit() } }}
-                placeholder="Type a command..." rows={2}
-                className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm outline-none border ${isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-violet-800" : "bg-violet-50/40 border-violet-200 text-slate-900 placeholder:text-violet-300 focus:border-violet-400"}`} />
+                placeholder="Ask to integrate an API, or paste a repo URL..." rows={3}
+                className={`flex-1 resize-none rounded-xl px-3 py-2.5 text-sm outline-none border transition-all ${isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-violet-700" : "bg-violet-50/40 border-violet-200 text-slate-900 placeholder:text-violet-300 focus:border-violet-400"}`} />
               <button onClick={() => handleTextSubmit()} disabled={!textInput.trim() || isSubmitting}
-                className={`p-3 rounded-xl flex-shrink-0 ${!textInput.trim() || isSubmitting ? (isDark ? "bg-slate-800 text-slate-600" : "bg-slate-100 text-slate-400") : (isDark ? "bg-violet-700 text-white hover:bg-violet-600" : "bg-violet-600 text-white hover:bg-violet-500")}`}>
+                className={`p-3 rounded-xl flex-shrink-0 transition-all ${!textInput.trim() || isSubmitting ? (isDark ? "bg-slate-800 text-slate-600" : "bg-slate-100 text-slate-400") : (isDark ? "bg-violet-700 text-white hover:bg-violet-600" : "bg-violet-600 text-white hover:bg-violet-500")}`}>
                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               </button>
             </div>
@@ -358,14 +466,14 @@ export default function ConversePage() {
         </div>
 
         {/* ─── RIGHT PANEL: Chat ─── */}
-        <div className={`flex-1 rounded-2xl border flex flex-col ${cardBg} ${cardBorder}`}>
+        <div className={`flex-1 rounded-2xl border flex flex-col min-h-[40vh] lg:min-h-0 ${cardBg} ${cardBorder}`}>
           <AnimatePresence mode="wait">
             {messages.length === 0 ? (
               <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex items-center justify-center">
                 <div className="text-center p-8">
                   <MessageSquare size={32} className={`mx-auto mb-3 ${isDark ? "text-violet-900" : "text-violet-200"}`} />
                   <p className={`text-sm font-medium mb-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>Start a conversation</p>
-                  <p className={`text-xs ${isDark ? "text-slate-600" : "text-slate-400"}`}>Speak or type to ask ORQESTRA to integrate an API</p>
+                  <p className={`text-xs ${isDark ? "text-slate-600" : "text-slate-400"}`}>Ask ORQESTRA to integrate an API in your project</p>
                 </div>
               </motion.div>
             ) : (
@@ -389,13 +497,24 @@ export default function ConversePage() {
                     ) : (
                       <>
                         <TypewriterText content={msg.content} isDark={isDark} isCompleted={msg.isCompleted} />
-                        {githubConnected && repoUrl && !msg.isPrResult && msg.content.includes("```") && (
+                        {msg.awaitingPrConfirm && !msg.isPrResult && (
+                          <PrConfirmButtons
+                            isDark={isDark}
+                            onConfirm={() => executeCreatePR(msg.id, msg.content, msg.apiName)}
+                            onDeny={() => {
+                              setAwaitingPrConfirm(msg.id, false)
+                              markPrDone(msg.id)
+                            }}
+                            loading={prLoadingId === msg.id}
+                          />
+                        )}
+                        {githubConnected && repoUrl && !msg.awaitingPrConfirm && !msg.isPrResult && msg.content.includes("```") && (
                           <div className="mt-2 pt-2 border-t border-white/10">
-                            <button onClick={() => handleCreatePR(msg)} disabled={prLoadingId === msg.id}
-                              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border ${prLoadingId === msg.id
+                            <button onClick={() => executeCreatePR(msg.id, msg.content, msg.apiName)} disabled={prLoadingId === msg.id}
+                              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${prLoadingId === msg.id
                                 ? (isDark ? "border-violet-900 text-violet-600" : "border-violet-200 text-violet-400")
                                 : (isDark ? "border-violet-800 text-violet-400 hover:bg-violet-950/40" : "border-violet-300 text-violet-600 hover:bg-violet-50")}`}>
-                              {prLoadingId === msg.id ? <><Loader2 size={12} className="animate-spin" /> Creating PR...</> : "Create PR in repo"}
+                              {prLoadingId === msg.id ? <><Loader2 size={12} className="animate-spin" /> Creating PR...</> : <><GitBranch size={12} /> Create PR in repo</>}
                             </button>
                           </div>
                         )}
@@ -405,7 +524,7 @@ export default function ConversePage() {
                 ))}
                 <div ref={messagesEndRef} />
                 <div className="flex justify-end pt-2">
-                  <button onClick={handleClear} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg ${isDark ? "text-slate-600 hover:text-slate-400 hover:bg-white/5" : "text-violet-400 hover:text-violet-600 hover:bg-violet-100/50"}`}>
+                  <button onClick={handleClear} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all ${isDark ? "text-slate-600 hover:text-slate-400 hover:bg-white/5" : "text-violet-400 hover:text-violet-600 hover:bg-violet-100/50"}`}>
                     <RotateCcw size={11} /> Clear chat
                   </button>
                 </div>
