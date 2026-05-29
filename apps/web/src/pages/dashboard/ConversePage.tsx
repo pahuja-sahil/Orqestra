@@ -12,7 +12,8 @@ import ReactMarkdown from "react-markdown"
 import api from "@/lib/api"
 
 const REPO_PATTERN = /^(?:https?:\/\/github\.com\/)?([\w.-]+\/[\w.-]+)(?:\/)?$/
-const AFFIRMATIVE_PATTERN = /^(?:yes|yeah|sure|ok|okay|go ahead|proceed|yep|y|do it|let's go|please|create pr)$/i
+const AFFIRMATIVE_PATTERN = /^(?:yes|yeah|sure|ok|okay|go ahead|proceed|yep|y|do it|let's go|please)$/i
+const PR_INTENT_PATTERN = /creat(?:e|ing)\s+(?:a\s+)?pr|creat(?:e|ing)\s+pull\s+request|make\s+(?:a\s+)?pr/i
 
 function detectRepoUrl(text: string): string | null {
   const trimmed = text.trim()
@@ -30,6 +31,13 @@ function normalizeRepoUrl(url: string): string {
   if (trimmed.startsWith("http")) return trimmed
   return `https://github.com/${trimmed.replace(/^https?:\/\/github\.com\//, "")}`
 }
+
+const thinkingMessages = [
+  "Processing your request...",
+  "Working on it...",
+  "Hang tight...",
+  "Almost there...",
+]
 
 const processingMessages: Record<string, string[]> = {
   transcribing: ["Listening...", "Converting speech...", "Processing voice..."],
@@ -72,6 +80,32 @@ function ProcessingAnimation({ stage, isDark }: { stage: string; isDark: boolean
         <div className={`absolute inset-4 rounded-full ${isDark ? "bg-violet-950/60" : "bg-violet-50"}`} />
       </div>
       <p className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-600"}`}>{messages[msgIndex]}</p>
+    </div>
+  )
+}
+
+function ThinkingBubble({ isDark }: { isDark: boolean }) {
+  const [msgIndex, setMsgIndex] = useState(0)
+  const [dotCount, setDotCount] = useState(0)
+
+  useEffect(() => {
+    const msgInterval = setInterval(() => setMsgIndex(prev => (prev + 1) % thinkingMessages.length), 3000)
+    const dotInterval = setInterval(() => setDotCount(prev => (prev + 1) % 4), 500)
+    return () => { clearInterval(msgInterval); clearInterval(dotInterval) }
+  }, [])
+
+  const dots = ".".repeat(dotCount) + " ".repeat(3 - dotCount)
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
+          className={`w-2 h-2 rounded-full ${isDark ? "bg-violet-500" : "bg-violet-600"}`} />
+        <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-violet-400" : "text-violet-600"}`}>ORQESTRA</p>
+      </div>
+      <p className={`text-sm leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+        {thinkingMessages[msgIndex]}<span className="font-mono">{dots}</span>
+      </p>
     </div>
   )
 }
@@ -169,7 +203,7 @@ function PrConfirmButtons({ isDark, onConfirm, onDeny, loading }: {
 export default function ConversePage() {
   const { isDark } = useThemeStore()
   const { accessToken } = useAuthStore()
-  const { messages, addMessage, markPrDone, setAwaitingPrConfirm, clearMessages } = useConverseStore()
+  const { messages, addMessage, updateMessage, removeMessage, markPrDone, setAwaitingPrConfirm, clearMessages } = useConverseStore()
   const [textInput, setTextInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [prLoadingId, setPrLoadingId] = useState<string | null>(null)
@@ -179,6 +213,8 @@ export default function ConversePage() {
   const [repoUrl, setRepoUrl] = useState("")
   const [repoStatus, setRepoStatus] = useState<"idle" | "validating" | "valid" | "invalid">("idle")
   const [repoError, setRepoError] = useState("")
+  const [repoInfo, setRepoInfo] = useState<{ repoPath: string; defaultBranch: string; language: string } | null>(null)
+  const [lastTargetFile, setLastTargetFile] = useState("")
 
   const {
     voiceState, processingStage, response, error, isSupported, startRecording, stopRecording, reset,
@@ -220,19 +256,22 @@ export default function ConversePage() {
   }, [messages])
 
   const executeCreatePR = useCallback(async (msgId: string, content: string, apiName?: string) => {
-    if (!repoUrl || prLoadingId) return
+    if (!repoUrl || !repoInfo || prLoadingId) return
     setPrLoadingId(msgId)
     try {
-      addMessage({ type: "orqestra", content: "⏳ Analyzing repository and preparing PR...", inputMode: "text" })
-      const analyzeRes = await api.post("/api/github/analyze", { repo_url: repoUrl }, { headers: { Authorization: `Bearer ${accessToken}` } })
-      const repoData = analyzeRes.data
+      const repoPath = repoInfo.repoPath || repoUrl.replace("https://github.com/", "")
+      const targetFile = lastTargetFile || "integrations.py"
+      addMessage({ type: "orqestra", content: `⏳ Creating PR in \`${targetFile}\`...`, inputMode: "text" })
       const rawCode = extractCodeFromMarkdown(content)
       if (!rawCode) { setPrLoadingId(null); return }
-      addMessage({ type: "orqestra", content: "⏳ Creating pull request...", inputMode: "text" })
       const prRes = await api.post("/api/github/create-pr", {
-        repo_path: repoData.repo_path, api_name: repoData.repo_name,
-        real_api_name: apiName || repoData.repo_name, target_file: repoData.best_file,
-        generated_code: rawCode, default_branch: repoData.default_branch, repo_url: repoUrl,
+        repo_path: repoPath,
+        api_name: repoPath.split("/")[1] || "repo",
+        real_api_name: apiName || repoPath.split("/")[1] || "repo",
+        target_file: targetFile,
+        generated_code: rawCode,
+        default_branch: repoInfo.defaultBranch,
+        repo_url: repoUrl,
       }, { headers: { Authorization: `Bearer ${accessToken}` } })
       markPrDone(msgId)
       setAwaitingPrConfirm(msgId, false)
@@ -244,7 +283,7 @@ export default function ConversePage() {
       const errorMsg = e?.response?.data?.detail || e?.message || "Failed to create PR"
       addMessage({ type: "orqestra", content: `❌ Failed to create PR: ${errorMsg}`, inputMode: "text", isPrResult: true })
     } finally { setPrLoadingId(null) }
-  }, [repoUrl, prLoadingId, accessToken, addMessage, markPrDone, setAwaitingPrConfirm])
+  }, [repoUrl, repoInfo, lastTargetFile, prLoadingId, accessToken, addMessage, markPrDone, setAwaitingPrConfirm])
 
   const checkResponseForPrAsk = useCallback((responseText: string, msgId: string) => {
     const prKeywords = /ready for PR|create.*PR|pull request|shall i|should i|do you want|are you ready/i
@@ -260,56 +299,80 @@ export default function ConversePage() {
     addMessage({ type: "user", content: userText, inputMode: "text" })
     setIsSubmitting(true)
 
+    const placeholderId = addMessage({ type: "orqestra", content: "", inputMode: "text", isPlaceholder: true })
+
     try {
       const detectedRepoUrl = detectRepoUrl(userText)
       const isAffirmative = AFFIRMATIVE_PATTERN.test(userText.trim())
+      const wantsPr = PR_INTENT_PATTERN.test(userText.trim()) || isAffirmative
 
-      if (isAffirmative) {
+      if (wantsPr) {
         const lastCode = findLastCodeMessage()
         if (lastCode) {
+          removeMessage(placeholderId)
           setIsSubmitting(false)
           await executeCreatePR(lastCode.id, lastCode.content, lastCode.apiName)
           return
         }
       }
 
+      const history = messages.slice(-8).map(m => ({
+        role: m.type === "user" ? "user" : "assistant",
+        content: m.content,
+      }))
+
       if (detectedRepoUrl && !repoUrl) {
         setRepoUrl(detectedRepoUrl)
         setRepoStatus("validating")
-        addMessage({ type: "orqestra", content: `🔗 Detected repository URL: **${detectedRepoUrl}**`, inputMode: "text" })
+        updateMessage(placeholderId, { content: `🔗 Detected repository URL: **${detectedRepoUrl}**`, isPlaceholder: false })
         try {
           const analyzeRes = await api.post("/api/github/analyze", { repo_url: detectedRepoUrl }, { headers: { Authorization: `Bearer ${accessToken}` } })
           setRepoStatus("valid")
-          addMessage({ type: "orqestra", content: `✅ Repository connected: **${analyzeRes.data.repo_path}** (${analyzeRes.data.language})`, inputMode: "text" })
+          setRepoInfo({
+            repoPath: analyzeRes.data.repo_path,
+            defaultBranch: analyzeRes.data.default_branch,
+            language: analyzeRes.data.language,
+          })
+          updateMessage(placeholderId, { content: `✅ Repository connected: **${analyzeRes.data.repo_path}** (${analyzeRes.data.language})`, isPlaceholder: false })
           const lastUserMsg = [...messages].reverse().find(m => m.type === "user" && m.inputMode === "text")
           const intentText = lastUserMsg ? lastUserMsg.content : `Proceed with integration in ${detectedRepoUrl}`
+          updateMessage(placeholderId, { content: "", isPlaceholder: true })
           const res = await api.post("/api/converse/process", {
             text: intentText,
             repo_url: detectedRepoUrl,
+            conversation_history: history,
           }, { headers: { Authorization: `Bearer ${accessToken}` } })
-          const msgId = addMessage({ type: "orqestra", content: res.data.response, inputMode: "text", apiName: res.data.api_name || "" })
-          checkResponseForPrAsk(res.data.response, msgId)
+          updateMessage(placeholderId, { content: res.data.response, isPlaceholder: false, apiName: res.data.api_name || "" })
+          setLastTargetFile(res.data.target_file || "")
+          checkResponseForPrAsk(res.data.response, placeholderId)
         } catch {
           setRepoStatus("invalid")
-          addMessage({ type: "orqestra", content: "❌ Could not access repository. Check the URL and ensure GitHub is connected in Settings.", inputMode: "text" })
+          setRepoUrl("")
+          setRepoInfo(null)
+          updateMessage(placeholderId, { content: "❌ Could not access repository. Check the URL and ensure GitHub is connected in Settings.", isPlaceholder: false })
         }
       } else {
-        const res = await api.post("/api/converse/process", { text: userText, repo_url: repoUrl }, { headers: { Authorization: `Bearer ${accessToken}` } })
-        const msgId = addMessage({ type: "orqestra", content: res.data.response, inputMode: "text", apiName: res.data.api_name || "" })
-        checkResponseForPrAsk(res.data.response, msgId)
+        const res = await api.post("/api/converse/process", {
+          text: userText,
+          repo_url: repoUrl,
+          conversation_history: history,
+        }, { headers: { Authorization: `Bearer ${accessToken}` } })
+        updateMessage(placeholderId, { content: res.data.response, isPlaceholder: false, apiName: res.data.api_name || "" })
+        if (res.data.target_file) setLastTargetFile(res.data.target_file)
+        checkResponseForPrAsk(res.data.response, placeholderId)
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } }; message?: string }
       const errorMsg = e?.response?.data?.detail || e?.message || ""
       if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
-        addMessage({ type: "orqestra", content: "ORQESTRA is thinking hard right now — rate limit reached. Please retry in a moment.", inputMode: "text" })
+        updateMessage(placeholderId, { content: "ORQESTRA is thinking hard right now — rate limit reached. Please retry in a moment.", isPlaceholder: false })
       } else if (errorMsg.includes("blocked") || errorMsg.includes("safety")) {
-        addMessage({ type: "orqestra", content: "That request was blocked by safety guardrails. Please rephrase your request.", inputMode: "text" })
+        updateMessage(placeholderId, { content: "That request was blocked by safety guardrails. Please rephrase your request.", isPlaceholder: false })
       } else {
-        addMessage({ type: "orqestra", content: "Something went wrong. Please try again.", inputMode: "text" })
+        updateMessage(placeholderId, { content: "Something went wrong. Please try again.", isPlaceholder: false })
       }
     } finally { setIsSubmitting(false) }
-  }, [textInput, repoUrl, accessToken, isSubmitting, addMessage, executeCreatePR, checkResponseForPrAsk, messages, findLastCodeMessage])
+  }, [textInput, repoUrl, accessToken, isSubmitting, addMessage, updateMessage, removeMessage, executeCreatePR, checkResponseForPrAsk, messages, findLastCodeMessage])
 
   const handleMicClick = () => {
     if (voiceState === "idle") startRecording()
@@ -326,23 +389,36 @@ export default function ConversePage() {
     const normalized = normalizeRepoUrl(trimmed)
     setRepoStatus("validating")
     setRepoError("")
-    addMessage({ type: "orqestra", content: `🔗 Validating repository: ${normalized}`, inputMode: "text" })
+    const placeholderId = addMessage({ type: "orqestra", content: `🔗 Validating repository: ${normalized}`, inputMode: "text" })
     try {
       const res = await api.post("/api/github/analyze", { repo_url: normalized }, { headers: { Authorization: `Bearer ${accessToken}` } })
       setRepoStatus("valid")
-      addMessage({ type: "orqestra", content: `✅ Repository connected: **${res.data.repo_path}** (${res.data.language})`, inputMode: "text" })
+      setRepoInfo({
+        repoPath: res.data.repo_path,
+        defaultBranch: res.data.default_branch,
+        language: res.data.language,
+      })
+      updateMessage(placeholderId, { content: `✅ Repository connected: **${res.data.repo_path}** (${res.data.language})` })
       const lastUserMsg = [...messages].reverse().find(m => m.type === "user" && m.inputMode === "text")
       const intentText = lastUserMsg ? lastUserMsg.content : `Proceed with integration in ${normalized}`
+      const history = messages.slice(-8).map(m => ({
+        role: m.type === "user" ? "user" : "assistant",
+        content: m.content,
+      }))
+      updateMessage(placeholderId, { content: "", isPlaceholder: true })
       const converseRes = await api.post("/api/converse/process", {
         text: intentText,
         repo_url: normalized,
+        conversation_history: history,
       }, { headers: { Authorization: `Bearer ${accessToken}` } })
-      const msgId = addMessage({ type: "orqestra", content: converseRes.data.response, inputMode: "text", apiName: converseRes.data.api_name || "" })
-      checkResponseForPrAsk(converseRes.data.response, msgId)
+      updateMessage(placeholderId, { content: converseRes.data.response, isPlaceholder: false, apiName: converseRes.data.api_name || "" })
+      setLastTargetFile(converseRes.data.target_file || "")
+      checkResponseForPrAsk(converseRes.data.response, placeholderId)
     } catch {
       setRepoStatus("invalid")
       setRepoError("Could not access repository. Check the URL and ensure GitHub is connected.")
-      addMessage({ type: "orqestra", content: "❌ Could not access repository. Check the URL and ensure GitHub is connected in Settings.", inputMode: "text" })
+      setRepoInfo(null)
+      updateMessage(placeholderId, { content: "❌ Could not access repository. Check the URL and ensure GitHub is connected in Settings." })
     }
   }
 
@@ -360,8 +436,8 @@ export default function ConversePage() {
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row gap-5 min-h-0">
-        {/* ─── LEFT PANEL: Input ─── */}
-        <div className="w-full lg:w-1/2 flex-shrink-0 flex flex-col gap-5 overflow-y-auto pr-1">
+        {/* ─── LEFT PANEL: Input (40%) ─── */}
+        <div className="w-full lg:w-2/5 flex flex-col gap-5 overflow-y-auto pr-1 min-w-0">
           {/* GitHub Status + Repo URL */}
           <div className={`rounded-2xl border p-5 ${cardBg} ${cardBorder}`}>
             {githubConnected === null ? (
@@ -465,8 +541,8 @@ export default function ConversePage() {
           </div>
         </div>
 
-        {/* ─── RIGHT PANEL: Chat ─── */}
-        <div className={`flex-1 rounded-2xl border flex flex-col min-h-[40vh] lg:min-h-0 ${cardBg} ${cardBorder}`}>
+        {/* ─── RIGHT PANEL: Chat (60%) ─── */}
+        <div className={`flex-1 rounded-2xl border flex flex-col min-h-[40vh] lg:min-h-0 overflow-x-hidden ${cardBg} ${cardBorder}`}>
           <AnimatePresence mode="wait">
             {messages.length === 0 ? (
               <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex items-center justify-center">
@@ -477,7 +553,7 @@ export default function ConversePage() {
                 </div>
               </motion.div>
             ) : (
-              <motion.div key="messages" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 overflow-y-auto p-4 space-y-3">
+              <motion.div key="messages" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3">
                 {messages.map((msg) => (
                   <motion.div key={msg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                     className={`p-3 rounded-xl ${msg.type === "user"
@@ -493,10 +569,12 @@ export default function ConversePage() {
                       )}
                     </div>
                     {msg.type === "user" ? (
-                      <p className={`text-sm leading-relaxed ${isDark ? "text-slate-200" : "text-slate-800"}`}>{msg.content}</p>
+                      <p className={`text-sm leading-relaxed break-words ${isDark ? "text-slate-200" : "text-slate-800"}`}>{msg.content}</p>
+                    ) : msg.isPlaceholder ? (
+                      <ThinkingBubble isDark={isDark} />
                     ) : (
                       <>
-                        <TypewriterText content={msg.content} isDark={isDark} isCompleted={msg.isCompleted} />
+                        <div className="break-words min-w-0"><TypewriterText content={msg.content} isDark={isDark} isCompleted={msg.isCompleted} /></div>
                         {msg.awaitingPrConfirm && !msg.isPrResult && (
                           <PrConfirmButtons
                             isDark={isDark}

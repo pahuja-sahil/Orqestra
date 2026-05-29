@@ -8,12 +8,14 @@ class OrqestraState(TypedDict):
     # Input
     user_input: str
     source: str
+    conversation_history: list
 
     # Planning
     api_name: str
     integration_goal: str
     integration_steps: list
     language: str
+    skip_codegen: bool
 
     # Research
     retrieved_docs: list

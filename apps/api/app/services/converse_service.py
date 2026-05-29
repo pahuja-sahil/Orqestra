@@ -68,7 +68,8 @@ async def process_command(
     source: str = "voice",
     repo_url: str = "",
     user_id: str = "",
-    db=None
+    db=None,
+    conversation_history: list | None = None,
 ) -> dict:
     if not text:
         return {"response": "I didn't catch that. Could you try again?", "api_name": ""}
@@ -78,7 +79,8 @@ async def process_command(
             source=source,
             repo_url=repo_url,
             user_id=user_id,
-            db=db
+            db=db,
+            conversation_history=conversation_history or [],
         )
         return result
     except Exception as e:

@@ -42,11 +42,13 @@ async def repo_context_node(state: OrqestraState) -> OrqestraState:
             return state
 
         existing_file_content = repo_data.get("existing_file_content", "")
+
+        effective_target = state.get("target_file") or repo_data["best_file"]
         
         context_parts = [
             f"Repository: {repo_data['repo_name']}",
             f"Language: {repo_data['language']}",
-            f"Target file: {repo_data['best_file']}",
+            f"Target file: {effective_target}",
             f"Existing integrations: {', '.join(repo_data['existing_integrations']) or 'none'}",
             "",
             "KEY FILES IN THIS REPO:",
@@ -57,7 +59,8 @@ async def repo_context_node(state: OrqestraState) -> OrqestraState:
             context_parts.append(content[:1000])
 
         state["repo_context"] = "\n".join(context_parts)
-        state["target_file"] = repo_data["best_file"]
+        if not state.get("target_file"):
+            state["target_file"] = repo_data["best_file"]
         state["language"] = repo_data["language"]
         state["default_branch"] = repo_data["default_branch"]
         state["repo_path"] = repo_data["repo_path"]
@@ -65,7 +68,7 @@ async def repo_context_node(state: OrqestraState) -> OrqestraState:
 
         logger.info("repo_context_built",
                     repo=repo_url,
-                    target_file=repo_data["best_file"],
+                    target_file=effective_target,
                     language=repo_data["language"])
 
     except Exception as e:

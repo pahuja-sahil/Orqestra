@@ -44,7 +44,7 @@ def build_orqestra_agent():
     graph.add_node("format", format_node)
 
     def should_continue_after_planning(state: OrqestraState):
-        if state.get("api_name") == "invalid":
+        if state.get("api_name") == "invalid" or state.get("skip_codegen"):
             return "end"
         return "continue"
 
@@ -83,7 +83,8 @@ async def run_orqestra_agent(
     repo_url: str = "",
     user_id: str = "",
     db=None,
-    error_reason: str = None
+    error_reason: str = None,
+    conversation_history: list | None = None,
 ) -> str:
     """
     Main entry point. Called from converse_service.py
@@ -93,19 +94,16 @@ async def run_orqestra_agent(
                 input=user_input[:50])
 
     input_text = user_input
-    # If user says "done" or similar after providing a repo URL, 
-    # we should look at the history or assume they want to proceed with the integration.
-    if input_text.lower().strip() in ["done", "proceed", "go", "start"] and repo_url:
-        # Inject a more descriptive intent for the planner
-        input_text = f"Proceed with the integration in the repo {repo_url}"
 
     initial_state: OrqestraState = {
         "user_input": input_text,
         "source": source,
+        "conversation_history": conversation_history or [],
         "api_name": "",
         "integration_goal": "",
         "integration_steps": [],
         "language": "python",
+        "skip_codegen": False,
         "retrieved_docs": [],
         "context": "",
         "repo_url": repo_url,
@@ -139,6 +137,10 @@ async def run_orqestra_agent(
         return {
             "response": final_state["final_response"],
             "api_name": final_state.get("api_name", ""),
+            "target_file": final_state.get("target_file", ""),
+            "language": final_state.get("language", "python"),
+            "default_branch": final_state.get("default_branch", "main"),
+            "repo_path": final_state.get("repo_path", ""),
             "success": final_state.get("error") is None
         }
     except Exception as e:
@@ -146,5 +148,9 @@ async def run_orqestra_agent(
         return {
             "response": "I encountered an issue with my agent pipeline. Please try again.",
             "api_name": "",
+            "target_file": "",
+            "language": "python",
+            "default_branch": "main",
+            "repo_path": "",
             "success": False
         }

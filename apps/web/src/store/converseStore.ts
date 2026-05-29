@@ -12,11 +12,14 @@ interface Message {
   apiName?: string
   isCompleted?: boolean
   awaitingPrConfirm?: boolean
+  isPlaceholder?: boolean
 }
 
 interface ConverseStore {
   messages: Message[]
   addMessage: (message: Omit<Message, "id" | "timestamp">) => string
+  updateMessage: (id: string, updates: Partial<Message>) => void
+  removeMessage: (id: string) => void
   markPrDone: (id: string) => void
   markCompleted: (id: string) => void
   setAwaitingPrConfirm: (id: string, value: boolean) => void
@@ -42,6 +45,18 @@ export const useConverseStore = create<ConverseStore>()(
         }))
         return id
       },
+
+      updateMessage: (id, updates) =>
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === id ? { ...m, ...updates } : m
+          ),
+        })),
+
+      removeMessage: (id) =>
+        set((state) => ({
+          messages: state.messages.filter((m) => m.id !== id),
+        })),
 
       markPrDone: (id) =>
         set((state) => ({

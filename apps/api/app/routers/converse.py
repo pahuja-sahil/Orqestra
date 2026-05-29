@@ -213,6 +213,7 @@ async def process_text(
     body = await request.json()
     text = body.get("text", "")
     repo_url = body.get("repo_url", "")
+    conversation_history = body.get("conversation_history", [])
 
     if not text:
         raise HTTPException(status_code=400, detail="No text provided")
@@ -222,9 +223,17 @@ async def process_text(
         source="text",
         repo_url=repo_url,
         user_id=payload["sub"],
-        db=db
+        db=db,
+        conversation_history=conversation_history,
     )
-    return {"response": result["response"], "api_name": result.get("api_name", "")}
+    return {
+        "response": result["response"],
+        "api_name": result.get("api_name", ""),
+        "target_file": result.get("target_file", ""),
+        "language": result.get("language", "python"),
+        "default_branch": result.get("default_branch", "main"),
+        "repo_path": result.get("repo_path", ""),
+    }
 
 
 @router.post("/ingest")
