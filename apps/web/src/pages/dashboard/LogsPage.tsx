@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react"
 import { motion } from "motion/react"
-import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
 import {
   ScrollText, CheckCircle, XCircle,
   AlertCircle, RefreshCw, Clock
 } from "lucide-react"
 import api from "@/lib/api"
-
-const TRANSITION = "transition-all duration-500 ease-in-out"
 
 interface LogEntry {
   id: string
@@ -30,7 +27,6 @@ function StatusIcon({ status }: { status: string }) {
 }
 
 export default function LogsPage() {
-  const { isDark } = useThemeStore()
   const { accessToken } = useAuthStore()
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -71,14 +67,14 @@ export default function LogsPage() {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="max-w-4xl mx-auto w-full"
+      className="max-w-4xl mx-auto w-full theme-root"
     >
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className={`text-3xl font-bold mb-2 ${TRANSITION} ${isDark ? "text-white" : "text-slate-900"}`}>
+          <h1 className="text-3xl font-bold mb-2 text-[var(--text-primary)]">
             Logs
           </h1>
-          <p className={`text-sm ${TRANSITION} ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+          <p className="text-sm text-[var(--text-muted)]">
             Monitor integration health — updates every 30 seconds
           </p>
         </div>
@@ -86,11 +82,7 @@ export default function LogsPage() {
           whileHover={{ rotate: 180 }}
           transition={{ duration: 0.3 }}
           onClick={fetchLogs}
-          className={`p-2.5 rounded-xl border ${TRANSITION} ${
-            isDark
-              ? "border-violet-950/50 text-violet-400 hover:bg-violet-950/40"
-              : "border-violet-200 text-violet-600 hover:bg-violet-50"
-          }`}
+          className="p-2.5 rounded-xl border border-[var(--border)] text-[var(--text-accent)] hover:bg-[var(--bg-element)]"
         >
           <RefreshCw size={16} />
         </motion.button>
@@ -102,14 +94,10 @@ export default function LogsPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold border capitalize ${TRANSITION} ${
+            className={`px-4 py-2 rounded-xl text-xs font-semibold border capitalize border-[var(--border)] ${
               filter === f
-                ? isDark
-                  ? "bg-violet-950/60 text-violet-300 border-violet-800/60"
-                  : "bg-violet-600 text-white border-violet-500"
-                : isDark
-                  ? "text-slate-500 border-white/5 hover:border-violet-900/40 hover:text-slate-300"
-                  : "text-slate-500 border-violet-100 hover:border-violet-200 hover:text-violet-600"
+                ? "bg-violet-600 text-white"
+                : "text-[var(--text-muted)] hover:text-[var(--text-accent)]"
             }`}
           >
             {f} ({counts[f]})
@@ -122,34 +110,20 @@ export default function LogsPage() {
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className={`w-8 h-8 border-2 border-t-transparent rounded-full ${
-              isDark ? "border-violet-500" : "border-violet-600"
-            }`}
+            className="w-8 h-8 border-2 border-t-transparent rounded-full border-[var(--text-accent)]"
           />
         </div>
       ) : filtered.length === 0 ? (
-        <div className={`rounded-3xl border p-16 text-center ${TRANSITION} ${
-          isDark
-            ? "border-violet-950/50 bg-[#0a000f]/80"
-            : "border-violet-200/80 bg-white shadow-xl shadow-violet-100/40"
-        }`}>
-          <ScrollText size={32} className={`mx-auto mb-4 ${isDark ? "text-violet-900" : "text-violet-200"}`} />
-          <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+        <div className="rounded-3xl border p-16 text-center bg-[var(--bg-card)] border-[var(--border)] shadow-xl">
+          <ScrollText size={32} className="mx-auto mb-4 text-[var(--border)]" />
+          <p className="text-sm text-[var(--text-muted)]">
             No logs found
           </p>
         </div>
       ) : (
-        <div className={`rounded-3xl border overflow-hidden ${TRANSITION} ${
-          isDark
-            ? "border-violet-950/50 bg-[#0a000f]/80"
-            : "border-violet-200/80 bg-white shadow-xl shadow-violet-100/40"
-        }`}>
+        <div className="rounded-3xl border overflow-hidden bg-[var(--bg-card)] border-[var(--border)] shadow-xl">
           {/* Table header */}
-          <div className={`grid grid-cols-5 gap-4 px-5 py-3 text-xs font-semibold tracking-wider border-b ${TRANSITION} ${
-            isDark
-              ? "text-slate-500 border-white/5"
-              : "text-slate-400 border-violet-100"
-          }`}>
+          <div className="grid grid-cols-5 gap-4 px-5 py-3 text-xs font-semibold tracking-wider border-b text-[var(--text-muted)] border-[var(--border)]">
             <span className="col-span-2">INTEGRATION</span>
             <span>STATUS</span>
             <span>FAILURES</span>
@@ -164,40 +138,34 @@ export default function LogsPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.04 }}
-                className={`grid grid-cols-5 gap-4 px-5 py-4 text-sm items-center ${TRANSITION} ${
-                  isDark ? "hover:bg-white/2" : "hover:bg-violet-50/40"
-                }`}
+                className="grid grid-cols-5 gap-4 px-5 py-4 text-sm items-center hover:bg-[var(--bg-element)]/40"
               >
                 <div className="col-span-2">
-                  <p className={`font-medium text-sm ${isDark ? "text-slate-200" : "text-slate-800"}`}>
+                  <p className="font-medium text-sm text-[var(--text-primary)]">
                     {log.name}
                   </p>
-                  <p className={`text-xs mt-0.5 ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+                  <p className="text-xs mt-0.5 text-[var(--text-muted)]">
                     {log.api_name}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <StatusIcon status={log.status} />
-                  <span className={`text-xs capitalize ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                  <span className="text-xs capitalize text-[var(--text-muted)]">
                     {log.status}
                   </span>
                 </div>
 
-                <div className={`text-sm font-medium ${
-                  log.failure_count > 0
-                    ? isDark ? "text-violet-400" : "text-violet-600"
-                    : isDark ? "text-slate-500" : "text-slate-400"
-                }`}>
+                <div className="text-sm font-medium text-[var(--text-accent)]">
                   {log.failure_count}
                   {log.repair_attempts > 0 && (
-                    <span className={`ml-1.5 text-xs ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+                    <span className="ml-1.5 text-xs text-[var(--text-muted)]">
                       ({log.repair_attempts} repairs)
                     </span>
                   )}
                 </div>
 
-                <div className={`flex items-center gap-1.5 text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
                   <Clock size={11} />
                   {log.last_checked
                     ? new Date(log.last_checked).toLocaleTimeString()

@@ -2,8 +2,6 @@ import { motion } from "motion/react"
 import { useThemeStore } from "@/store/themeStore"
 import { ArrowRight, CheckCircle, Clock, Zap } from "lucide-react"
 
-const TRANSITION = "transition-all duration-500 ease-in-out"
-
 const PIPELINE = [
   {
     name: "Planner",
@@ -45,24 +43,20 @@ export default function AgentsPage() {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="max-w-4xl mx-auto w-full"
+      className="max-w-4xl mx-auto w-full theme-root"
     >
       <div className="mb-8">
-        <h1 className={`text-3xl font-bold mb-2 ${TRANSITION} ${isDark ? "text-white" : "text-slate-900"}`}>
+        <h1 className="text-3xl font-bold mb-2 text-[var(--text-primary)]">
           Agents
         </h1>
-        <p className={`text-sm ${TRANSITION} ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+        <p className="text-sm text-[var(--text-muted)]">
           ORQESTRA multi-agent pipeline — each agent specializes in one task
         </p>
       </div>
 
       {/* Pipeline visualization */}
-      <div className={`rounded-3xl border p-6 mb-6 ${TRANSITION} ${
-        isDark
-          ? "border-violet-950/50 bg-[#0a000f]/80 shadow-xl shadow-black/40"
-          : "border-violet-200/80 bg-white shadow-xl shadow-violet-100/40"
-      }`}>
-        <h2 className={`text-sm font-semibold mb-5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+      <div className="rounded-3xl border p-6 mb-6 bg-[var(--bg-card)] border-[var(--border)] shadow-xl">
+        <h2 className="text-sm font-semibold mb-5 text-[var(--text-muted)]">
           PIPELINE
         </h2>
 
@@ -73,46 +67,36 @@ export default function AgentsPage() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.08 }}
-                className={`flex items-center gap-4 p-4 rounded-2xl border ${TRANSITION} ${
-                  isDark
-                    ? "bg-white/3 border-white/5 hover:border-violet-900/40"
-                    : "bg-violet-50/40 border-violet-100 hover:border-violet-200"
+                className={`flex items-center gap-4 p-4 rounded-2xl border bg-[var(--bg-element)]/40 border-[var(--border)] ${
+                  isDark ? "hover:border-violet-900/40" : "hover:border-violet-200"
                 }`}
               >
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm ${
-                  isDark
-                    ? "bg-violet-950/60 text-violet-400 border border-violet-900/40"
-                    : "bg-violet-100 text-violet-600 border border-violet-200"
-                }`}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm bg-[var(--bg-element)] text-[var(--text-accent)] border border-[var(--border)]">
                   {i + 1}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className={`font-semibold text-sm ${isDark ? "text-white" : "text-slate-900"}`}>
+                    <h3 className="font-semibold text-sm text-[var(--text-primary)]">
                       {agent.name}
                     </h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-lg ${
-                      isDark
-                        ? "bg-white/5 text-slate-500"
-                        : "bg-slate-100 text-slate-500"
-                    }`}>
+                    <span className="text-xs px-2 py-0.5 rounded-lg bg-[var(--bg-element)] text-[var(--text-muted)]">
                       {agent.model}
                     </span>
                   </div>
-                  <p className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                  <p className="text-xs text-[var(--text-muted)]">
                     {agent.description}
                   </p>
                 </div>
 
-                <CheckCircle size={16} className={isDark ? "text-violet-800" : "text-violet-300"} />
+                <CheckCircle size={16} className="text-[var(--border)]" />
               </motion.div>
 
               {i < PIPELINE.length - 1 && (
                 <div className="flex justify-center my-1">
                   <ArrowRight
                     size={14}
-                    className={`rotate-90 ${isDark ? "text-violet-900" : "text-violet-300"}`}
+                    className="rotate-90 text-[var(--border)]"
                   />
                 </div>
               )}
@@ -133,24 +117,18 @@ export default function AgentsPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 + i * 0.08 }}
-            className={`rounded-2xl border p-4 ${TRANSITION} ${
-              isDark
-                ? "bg-[#0a000f]/80 border-violet-950/50"
-                : "bg-white border-violet-200/80 shadow-sm shadow-violet-100/40"
-            }`}
+            className="rounded-2xl border p-4 bg-[var(--bg-card)] border-[var(--border)] shadow-sm"
           >
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${
-              isDark ? "bg-violet-950/60" : "bg-violet-50"
-            }`}>
-              <Icon size={15} className={isDark ? "text-violet-400" : "text-violet-600"} />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3 bg-[var(--bg-element)]">
+              <Icon size={15} className="text-[var(--text-accent)]" />
             </div>
-            <p className={`text-2xl font-bold mb-0.5 ${isDark ? "text-white" : "text-slate-900"}`}>
+            <p className="text-2xl font-bold mb-0.5 text-[var(--text-primary)]">
               {value}
             </p>
-            <p className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+            <p className="text-xs font-medium text-[var(--text-muted)]">
               {label}
             </p>
-            <p className={`text-xs mt-0.5 ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+            <p className="text-xs mt-0.5 text-[var(--text-muted)] opacity-70">
               {sub}
             </p>
           </motion.div>

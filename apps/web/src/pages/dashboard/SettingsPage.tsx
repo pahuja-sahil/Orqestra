@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "motion/react"
+import { toast } from "sonner"
 import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
 import { Shield, User, Key, CheckCircle, AlertCircle, ShieldOff, XCircle } from "lucide-react"
@@ -46,6 +47,7 @@ export default function SettingsPage() {
     if (params.get("github") === "connected") {
       checkGithub()
       window.history.replaceState({}, "", "/dashboard/settings")
+      toast.success("GitHub connected successfully")
     }
   }, [accessToken])
 
@@ -66,8 +68,9 @@ export default function SettingsPage() {
         headers: { Authorization: `Bearer ${accessToken}` }
       })
       setGithubStatus({ connected: false })
+      toast.success("GitHub disconnected")
     } catch {
-      console.error("Failed to disconnect GitHub")
+      toast.error("Failed to disconnect GitHub")
     }
   }
 
@@ -99,8 +102,10 @@ export default function SettingsPage() {
       setUser({ ...user!, is_2fa_enabled: true })
       setStep("done")
       setTimeout(() => setStep("idle"), 2500)
+      toast.success("Two-factor authentication enabled")
     } catch {
       setError("Invalid code. Please try again.")
+      toast.error("Invalid code. Two-factor was not enabled.")
     } finally {
       setLoading(false)
     }
@@ -118,8 +123,10 @@ export default function SettingsPage() {
       setUser({ ...user!, is_2fa_enabled: false })
       setStep("idle")
       setTotpCode("")
+      toast.info("Two-factor authentication disabled")
     } catch {
       setError("Invalid code. 2FA was not disabled.")
+      toast.error("Invalid code. Two-factor was not disabled.")
     } finally {
       setLoading(false)
     }
@@ -135,30 +142,28 @@ export default function SettingsPage() {
       )
       setUser({ ...user!, name: nameInput })
       setEditingName(false)
+      toast.success("Display name updated")
     } catch {
       setError("Failed to update name")
+      toast.error("Failed to update display name")
     } finally {
       setNameSaving(false)
     }
   }
 
-  const cardClass = `p-6 rounded-2xl border mb-5 ${TRANSITION} ${
-    isDark
-      ? "border-violet-700/50 bg-zinc-950/80 shadow-2xl shadow-violet-950/30"
-      : "border-violet-200/80 bg-white/90 shadow-2xl shadow-violet-100/80"
-  }`
-  const titleClass = `text-base font-semibold ${isDark ? "text-white" : "text-slate-900"}`
-  const subClass = `text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`
+  const cardClass = "p-6 rounded-2xl border mb-5 bg-[var(--bg-card)] border-[var(--border)] shadow-2xl"
+  const titleClass = "text-base font-semibold text-[var(--text-primary)]"
+  const subClass = "text-sm text-[var(--text-muted)]"
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="max-w-2xl"
+      className="max-w-2xl theme-root"
     >
       <div className="mb-8">
-        <h1 className={`text-3xl font-bold mb-2 ${isDark ? "text-white" : "text-slate-900"}`}>
+        <h1 className="text-3xl font-bold mb-2 text-[var(--text-primary)]">
           Settings
         </h1>
         <p className={subClass}>Manage your account and security preferences</p>

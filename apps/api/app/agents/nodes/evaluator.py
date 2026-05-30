@@ -1,4 +1,3 @@
-import json
 import re
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
@@ -49,21 +48,55 @@ async def evaluator_node(state: OrqestraState) -> OrqestraState:
         state["evaluation_notes"] = "Error occurred during generation"
         return state
 
+    integration_type = state.get("integration_type") or "new"
+
+    # For "new" integrations, strip existing file content from generated code
+    # so the evaluator only sees the new code being added.
+    eval_code = state["generated_code"]
+    existing = state.get("existing_file_content", "")
+    if integration_type == "new" and existing and existing in eval_code:
+        eval_code = eval_code.replace(existing, "").strip()
+        eval_code = re.sub(r'\n{3,}', '\n\n', eval_code)
+        if not eval_code.strip():
+            eval_code = state["generated_code"]
+
+    if integration_type == "update":
+        scoring_criteria = f"""This is an API UPDATE request. Evaluate on these criteria:
+1. Completeness — was the old {state["api_name"]} code REPLACED properly with the new version?
+2. Correctness — is the new {state["api_name"]} API usage correct per the request and docs?
+3. Cleanliness — were OLD deprecated patterns removed (no duplicate {state["api_name"]} code)?
+4. Safety — are OTHER integrations and helper functions still intact and unmodified?
+5. Authentication & error handling — correct for the new API version?
+
+IMPORTANT: Do NOT penalize existing code from OTHER APIs — only evaluate the {state["api_name"]} update.
+"""
+    elif integration_type == "repair":
+        scoring_criteria = """This is a REPAIR. Evaluate on these criteria:
+1. Was the reported error actually fixed?
+2. Were any NEW errors introduced?
+3. Is the fix minimal and targeted?
+4. Does the code still compile and run?
+"""
+    else:
+        scoring_criteria = """This is a NEW integration. Evaluate on these criteria:
+1. Completeness — does the NEW code fully address the request?
+2. Authentication — is auth properly handled?
+3. Error handling — are errors caught and handled?
+4. Code quality — is the new code clean and well-structured?
+5. Accuracy — is the API usage correct based on the request?
+"""
+
     prompt = f"""You are a senior code reviewer evaluating an API integration response.
 
 Original Request: {state["user_input"]}
 API: {state["api_name"]}
 Goal: {state["integration_goal"]}
+Integration Type: {integration_type}
 
-Generated Response:
-{state["generated_code"]}
+Generated Response (new code only):
+{eval_code}
 
-Evaluate on these criteria:
-1. Completeness — does it fully address the request?
-2. Authentication — is auth properly handled?
-3. Error handling — are errors caught and handled?
-4. Code quality — is it clean and well-commented?
-5. Accuracy — is the API usage correct based on the request?
+{scoring_criteria}
 
 Return ONLY this format:
 SCORE: [number 1-10]
@@ -93,7 +126,6 @@ NOTES: [specific issues to fix, or "Excellent" if score >= 8]"""
 
         state["quality_score"] = score
         state["evaluation_notes"] = notes
-        state["retry_count"] = state.get("retry_count", 0)
 
         logger.info("evaluator_node_complete",
                     score=score,
@@ -105,6 +137,7 @@ NOTES: [specific issues to fix, or "Excellent" if score >= 8]"""
         state["quality_score"] = 7
         state["evaluation_notes"] = "Evaluation failed, using default score"
 
+    state["retry_count"] = state.get("retry_count", 0) + 1
     return state
 
 
@@ -119,14 +152,13 @@ def should_retry(state: OrqestraState) -> str:
                        error=str(error)[:80])
         return "end"
 
-    if score < QUALITY_THRESHOLD and retries < MAX_RETRIES:
-        state["retry_count"] = retries + 1
+    if score < QUALITY_THRESHOLD and retries <= MAX_RETRIES:
         logger.info("retrying_generation",
                     score=score,
-                    attempt=state["retry_count"])
+                    attempt=retries)
         return "retry"
 
     logger.info("evaluation_passed",
                 score=score,
-                total_attempts=retries + 1)
+                total_attempts=retries)
     return "end"

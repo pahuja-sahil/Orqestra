@@ -25,7 +25,7 @@ export function LampContainer({ children, className, isDark = true }: LampContai
           animate={{ opacity: 1, width: "28rem" }}
           transition={{ duration: 2, ease: "easeInOut" }}
           className={cn(
-            "absolute inset-auto right-1/2 h-56 overflow-visible w-[28rem]",
+            "absolute inset-auto right-1/2 h-56 overflow-visible w-md",
             "[--conic-position:from_70deg_at_center_top]",
             isDark
               ? "bg-gradient-conic from-[#6d28d9] via-transparent to-transparent"
@@ -33,11 +33,11 @@ export function LampContainer({ children, className, isDark = true }: LampContai
           )}
         >
           <div
-            className="absolute w-[100%] left-0 h-40 bottom-0 z-20 [mask-image:linear-gradient(to_top,white,transparent)] transition-colors duration-500"
+            className="absolute w-full left-0 h-40 bottom-0 z-20 mask-[linear-gradient(to_top,white,transparent)] transition-colors duration-500"
             style={{ backgroundColor: maskBg }}
           />
           <div
-            className="absolute w-40 h-[100%] left-0 bottom-0 z-20 [mask-image:linear-gradient(to_right,white,transparent)] transition-colors duration-500"
+            className="absolute w-40 h-full left-0 bottom-0 z-20 mask-[linear-gradient(to_right,white,transparent)] transition-colors duration-500"
             style={{ backgroundColor: maskBg }}
           />
         </motion.div>
@@ -47,7 +47,7 @@ export function LampContainer({ children, className, isDark = true }: LampContai
           animate={{ opacity: 1, width: "28rem" }}
           transition={{ duration: 2, ease: "easeInOut" }}
           className={cn(
-            "absolute inset-auto left-1/2 h-56 w-[28rem] overflow-visible",
+            "absolute inset-auto left-1/2 h-56 w-md overflow-visible",
             "[--conic-position:from_290deg_at_center_top]",
             isDark
               ? "bg-gradient-conic from-transparent via-transparent to-[#6d28d9]"
@@ -55,23 +55,23 @@ export function LampContainer({ children, className, isDark = true }: LampContai
           )}
         >
           <div
-            className="absolute w-40 h-[100%] right-0 bottom-0 z-20 [mask-image:linear-gradient(to_left,white,transparent)] transition-colors duration-500"
+            className="absolute w-40 h-full right-0 bottom-0 z-20 mask-[linear-gradient(to_left,white,transparent)] transition-colors duration-500"
             style={{ backgroundColor: maskBg }}
           />
           <div
-            className="absolute w-[100%] right-0 h-40 bottom-0 z-20 [mask-image:linear-gradient(to_top,white,transparent)] transition-colors duration-500"
+            className="absolute w-full right-0 h-40 bottom-0 z-20 mask-[linear-gradient(to_top,white,transparent)] transition-colors duration-500"
             style={{ backgroundColor: maskBg }}
           />
         </motion.div>
 
         <div
-          className="absolute top-1/2 h-48 w-full translate-y-12 scale-x-150 blur-2xl transition-colors duration-500 [mask-image:radial-gradient(ellipse_at_center_center,black,transparent_70%)]"
+          className="absolute top-1/2 h-48 w-full translate-y-12 scale-x-150 blur-2xl transition-colors duration-500 mask-[radial-gradient(ellipse_at_center_center,black,transparent_70%)]"
           style={{ backgroundColor: maskBg }}
         />
 
         <div
           className={cn(
-            "absolute inset-auto z-50 h-36 w-[26rem] -translate-y-1/2 rounded-full opacity-50 blur-3xl transition-colors duration-500",
+            "absolute inset-auto z-50 h-36 w-104 -translate-y-1/2 rounded-full opacity-50 blur-3xl transition-colors duration-500",
             isDark ? "bg-[#6d28d9]" : "bg-violet-200"
           )}
         />
@@ -81,7 +81,7 @@ export function LampContainer({ children, className, isDark = true }: LampContai
           animate={{ width: "14rem" }}
           transition={{ duration: 2, ease: "easeInOut" }}
           className={cn(
-            "absolute inset-auto z-30 h-36 w-56 -translate-y-[6rem] rounded-full blur-2xl transition-colors duration-500",
+            "absolute inset-auto z-30 h-36 w-56 -translate-y-24 rounded-full blur-2xl transition-colors duration-500",
             isDark ? "bg-[#8b5cf6]" : "bg-violet-300"
           )}
         />
@@ -91,13 +91,13 @@ export function LampContainer({ children, className, isDark = true }: LampContai
           animate={{ width: "26rem" }}
           transition={{ duration: 2, ease: "easeInOut" }}
           className={cn(
-            "absolute inset-auto z-50 h-0.5 w-[26rem] -translate-y-[7rem] transition-colors duration-500",
+            "absolute inset-auto z-50 h-0.5 w-104 -translate-y-28 transition-colors duration-500",
             isDark ? "bg-[#8b5cf6]" : "bg-violet-400"
           )}
         />
 
         <div
-          className="absolute inset-auto z-40 h-44 w-full -translate-y-[12.5rem] transition-colors duration-500"
+          className="absolute inset-auto z-40 h-44 w-full -translate-y-50 transition-colors duration-500"
           style={{ backgroundColor: maskBg }}
         />
       </div>

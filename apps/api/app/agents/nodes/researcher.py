@@ -1,13 +1,13 @@
 from app.agents.state import OrqestraState
-from app.services.vector_service import retrieve_relevant_chunks
+from app.services.vector_service import retrieve_relevant_chunks, ingest_document
+from app.services.discovery_service import discover_api
 from app.core.logger import logger
 
 
 async def researcher_node(state: OrqestraState) -> OrqestraState:
     """
     Searches ChromaDB for relevant documentation.
-    Uses multiple targeted queries for better retrieval.
-    Self-improves by trying fallback queries if primary search empty.
+    Falls back to web discovery if empty, caches results for next time.
     """
     logger.info("researcher_node_start", api=state["api_name"])
 
@@ -45,6 +45,27 @@ async def researcher_node(state: OrqestraState) -> OrqestraState:
         logger.warning("primary_queries_empty_trying_fallback",
                        api=state["api_name"])
         await run_queries(fallback_queries)
+
+    # Web discovery fallback if both RAG searches returned nothing
+    if not all_chunks:
+        logger.info("rag_empty_trying_web_discovery",
+                    api=state["api_name"])
+        discovered = await discover_api(state["api_name"])
+        if discovered.get("docs_content"):
+            chunk = discovered["docs_content"]
+            all_chunks.append(chunk)
+            seen.add(chunk)
+            # Cache in ChromaDB for future requests
+            try:
+                await ingest_document(
+                    text=discovered["docs_content"],
+                    source=f"discovery_{state['api_name'].lower()}"
+                )
+                logger.info("discovery_docs_cached", api=state["api_name"])
+            except Exception:
+                pass
+        if discovered.get("docs_url"):
+            state["docs_url"] = discovered["docs_url"]
 
     state["retrieved_docs"] = all_chunks[:8]
 

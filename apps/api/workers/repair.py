@@ -26,7 +26,7 @@ from app.services.notification_service import (
 from app.services.vector_service import get_relevant_docs
 
 
-MAX_REPAIR_ATTEMPTS = 4
+MAX_REPAIR_ATTEMPTS = 3
 BACKOFF_TIMES = [60, 120, 240, 480]
 
 
@@ -196,6 +196,19 @@ async def handle_successful_repair(integration: Integration, fixed_code: str, us
     if integration.repo_path and integration.file_path and integration.default_branch:
         try:
             from app.services.github_service import create_integration_pr
+
+            error_message = integration.health_check or ""
+            error_type = "health_check"
+            if "SyntaxError" in error_message:
+                error_type = "syntax_error"
+            if "Docs:" in error_message:
+                error_type = "docs_drift"
+
+            repair_context = {
+                "error_type": error_type,
+                "error_message": error_message,
+            }
+
             pr_result = await create_integration_pr(
                 repo_path=integration.repo_path,
                 api_name=integration.api_name,
@@ -203,8 +216,10 @@ async def handle_successful_repair(integration: Integration, fixed_code: str, us
                 generated_code=fixed_code,
                 default_branch=integration.default_branch,
                 user_id=str(user.id),
-                db=db
+                db=db,
+                repair_context=repair_context
             )
+            integration.pr_url = pr_result.get("pr_url", "")
             logger.info("repair_pr_created", name=integration.name, pr_url=pr_result.get("pr_url"))
         except Exception as e:
             logger.error("repair_pr_failed", name=integration.name, error=str(e))
@@ -219,7 +234,7 @@ async def handle_failed_repair(integration: Integration, error: str, user: User,
     logger.warning("repair_attempt_failed", name=integration.name, attempt=attempt, error=error[:100])
 
     if attempt >= MAX_REPAIR_ATTEMPTS:
-        integration.status = "failed"
+        integration.status = "broken"
         await db.commit()
 
         if user:

@@ -112,12 +112,21 @@ async def get_integration_health(
     return {
         "id": str(integration.id),
         "name": integration.name,
+        "api_name": integration.api_name,
         "status": integration.status,
         "circuit_state": integration.circuit_state,
         "failure_count": integration.failure_count,
         "repair_attempts": integration.repair_attempts,
         "last_checked": integration.last_checked,
-        "last_repaired": integration.last_repaired
+        "last_repaired": integration.last_repaired,
+        "health_check": integration.health_check,
+        "file_path": integration.file_path,
+        "repo_url": integration.repo_url,
+        "pr_url": integration.pr_url,
+        "language": integration.language,
+        "created_at": integration.created_at,
+        "updated_at": integration.updated_at,
+        "generated_code": integration.generated_code
     }
 
 

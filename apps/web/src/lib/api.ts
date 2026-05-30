@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
 
 const api = axios.create({
@@ -23,6 +24,7 @@ api.interceptors.response.use(
         return api(original)
       } catch {
         useAuthStore.getState().logout()
+        toast.error("Session expired — please log in again")
         window.location.href = '/auth/login'
       }
     }

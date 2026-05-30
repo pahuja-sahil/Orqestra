@@ -80,17 +80,23 @@ Classify the user's intent:
 - Is providing additional integration details (checkout type, endpoint, etc.)
 - Said "go ahead" followed by integration details — but NOT if it's just "create PR"
 
+**update_existing** — if the user:
+- Is asking to UPDATE, UPGRADE, MIGRATE, or REFRESH an existing API integration
+- Says "update my X integration", "migrate X to new version", "upgrade X to v2", etc.
+- Wants to replace old integration code with new version of the same API
+
 **general** — not API integration related
 
 Response rules:
 - If the user wants to integrate an API but has NOT provided a repo URL → ask for their GitHub repo URL. Do NOT give coding tutorials.
 - If the user wants to integrate an API AND HAS a repo URL → acknowledge briefly, do NOT give guides
 - If this is a follow_up wanting a PR → respond naturally like "Got it, creating the PR in {{file}} now"
+- IMPORTANT: If the user is providing their repo URL after being asked (even if reusing previous text), classify as **new_integration** so code generation proceeds. Extract api_name, goal, steps from context.
 - Be brief and natural. Vary your wording.
 
 Return ONLY valid JSON with no markdown, no backticks:
 {{
-"intent_type": "new_integration" or "follow_up" or "general",
+"intent_type": "new_integration" or "follow_up" or "update_existing" or "general",
 "api_name": "name of the API (e.g. Stripe, GitHub, Twilio) — empty for follow_up or general",
 "integration_goal": "one sentence describing what needs to happen",
 "integration_steps": ["step 1", "step 2", "step 3"],
@@ -121,10 +127,37 @@ Return ONLY valid JSON with no markdown, no backticks:
         response_text = plan.get("response", "")
 
         if intent_type == "follow_up":
-            state["skip_codegen"] = True
-            state["generated_code"] = response_text or "Got it! I'll proceed with that."
-            state["api_name"] = state.get("api_name") or "general"
-            logger.info("planner_follow_up", response=response_text[:80])
+            # If repo URL is now available and no code was generated before,
+            # proceed with code generation instead of skipping
+            if repo_url and not has_code_in_history:
+                api_name = plan.get("api_name", "") or "general"
+                state["api_name"] = api_name
+                state["integration_goal"] = plan.get("integration_goal", state["user_input"])
+                state["integration_steps"] = plan.get("integration_steps", [])
+                state["language"] = plan.get("language", "python")
+                state["target_file"] = plan.get("target_file", "")
+                state["skip_codegen"] = False
+                state["integration_type"] = "new"
+                logger.info("planner_proceed_with_repo", api=api_name, repo=repo_url[:40])
+            else:
+                state["skip_codegen"] = True
+                state["generated_code"] = response_text or "Got it! I'll proceed with that."
+                state["api_name"] = state.get("api_name") or "general"
+                logger.info("planner_follow_up", response=response_text[:80])
+        elif intent_type == "update_existing":
+            if not repo_url:
+                state["skip_codegen"] = True
+                state["api_name"] = "invalid"
+                state["generated_code"] = response_text or "Please provide your GitHub repository URL so I can update the integration."
+            else:
+                state["api_name"] = api_name
+                state["integration_goal"] = plan.get("integration_goal", state["user_input"])
+                state["integration_steps"] = plan.get("integration_steps", [])
+                state["language"] = plan.get("language", "python")
+                state["target_file"] = plan.get("target_file", "")
+                state["skip_codegen"] = False
+                state["integration_type"] = "update"
+                logger.info("planner_update_existing", api=api_name, repo=repo_url[:40])
         elif api_name.lower() == "general":
             state["skip_codegen"] = True
             state["api_name"] = "invalid"
@@ -140,6 +173,7 @@ Return ONLY valid JSON with no markdown, no backticks:
             state["language"] = plan.get("language", "python")
             state["target_file"] = plan.get("target_file", "")
             state["skip_codegen"] = False
+            state["integration_type"] = "new"
 
         logger.info("planner_node_complete",
                     api=state["api_name"],

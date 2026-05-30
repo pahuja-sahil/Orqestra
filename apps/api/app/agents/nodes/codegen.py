@@ -94,16 +94,39 @@ async def codegen_node(state: OrqestraState) -> OrqestraState:
         for i, step in enumerate(state.get("integration_steps", []))
     )
 
+    integration_type = state.get("integration_type") or "new"
     retry_context = ""
     if retry > 0 and state.get("evaluation_notes"):
+        notes_lower = state["evaluation_notes"].lower()
+        has_existing_code_note = "existing" in notes_lower and ("unnecessary" in notes_lower or "unrelated" in notes_lower or "not part of" in notes_lower or "irrelevant" in notes_lower)
+
+        if integration_type == "new" and has_existing_code_note:
+            extra_instructions = """
+CRITICAL: Some evaluation notes mentioned existing code. This is expected.
+- Only improve the NEW integration code you added.
+- Ignore evaluator feedback about existing code — it must stay.
+"""
+        elif integration_type == "update":
+            api_name = state.get("api_name", "API")
+            extra_instructions = f"""
+CRITICAL: This is an UPDATE. Address the evaluator's feedback about the new code.
+- Replace the old {api_name} integration patterns with new ones.
+- Do NOT duplicate old {api_name} code — only the new version should remain.
+- Keep OTHER integrations untouched.
+"""
+        else:
+            extra_instructions = """
+  - Address EVERY issue listed above
+  - Do not repeat the same mistakes
+"""
+
         retry_context = f"""
 PREVIOUS ATTEMPT {retry} FAILED:
   Score: {state.get("quality_score", 0)}/10
   Issues identified: {state["evaluation_notes"]}
 
 INSTRUCTIONS FOR THIS ATTEMPT:
-  - Address EVERY issue listed above
-  - Do not repeat the same mistakes
+{extra_instructions}
   - Be more thorough with error handling
   - Ensure all authentication is complete
   - Double check against the integration steps
@@ -118,7 +141,7 @@ INSTRUCTIONS FOR THIS ATTEMPT:
             else:
                 pr_ask = "## Next Steps\n[what the developer needs to do to use this code]"
 
-            # Surgical repair vs New integration
+            # Surgical repair vs New integration vs Update
             is_repair = state.get("source") == "repair"
             if is_repair:
                 error_reason = state.get("error_reason", "")
@@ -170,15 +193,49 @@ EXISTING CODE:
 ```
 {instruction_block}
 """
-            else:
-                # New Integration
+            elif integration_type == "update":
+                existing_content = state.get("existing_file_content", "")
                 instruction_block = f"""
-CRITICAL INSTRUCTION (NEW INTEGRATION):
-- ADD your new {state.get("api_name", "API")} integration code.
-- If the file exists, append your code to it in a clean way.
-- Preserve all existing imports and functions.
+CRITICAL INSTRUCTION (UPDATE INTEGRATION):
+- REPLACE the old {state.get("api_name", "API")} integration code with the new version.
+- The old {state.get("api_name", "API")} code is in the file below — rewrite only that section.
+- Keep ALL other integrations and code EXACTLY as they are.
+- Do NOT duplicate old {state.get("api_name", "API")} code — only the new version should remain.
+- Update imports and auth if the new API version requires it.
 """
                 repo_section = f"""
+REPOSITORY CONTEXT:
+{state["repo_context"]}
+
+EXISTING FILE CONTENT (target: {state.get("target_file", "integrations.py")}):
+```python
+{existing_content[:4000]}
+```
+{instruction_block}
+"""
+            else:
+                # New Integration (default)
+                is_new_file = not state.get("existing_file_content", "")
+
+                if is_new_file:
+                    instruction_block = f"""
+CRITICAL INSTRUCTION (NEW FILE):
+- Create a NEW file at {state.get("target_file", "")} with ONLY the {state.get("api_name", "API")} integration code.
+- Do NOT include code from other files or APIs in the repository.
+- Follow the user's request exactly — generate only what was asked.
+"""
+                    repo_section = f"""
+REPOSITORY CONTEXT (for reference only):
+{state["repo_context"]}
+"""
+                else:
+                    instruction_block = f"""
+CRITICAL INSTRUCTION (APPEND TO EXISTING FILE):
+- Add your new {state.get("api_name", "API")} integration code to the existing file.
+- Keep ALL existing code and functions exactly as they are.
+- Output the COMPLETE file including existing content plus your new additions.
+"""
+                    repo_section = f"""
 REPOSITORY CONTEXT:
 {state["repo_context"]}
 

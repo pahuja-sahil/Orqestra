@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { motion } from "motion/react"
+import { toast } from "sonner"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
@@ -40,11 +41,13 @@ export default function TwoFactorPage() {
         headers: { Authorization: `Bearer ${res.data.access_token}` }
       })
       setUser(userRes.data)
-      
+
+      toast.success("Two-factor verified — logging in")
       navigate("/dashboard")
     } catch {
       setError("Invalid code. Please try again.")
       setCode("")
+      toast.error("Invalid code. Please try again.")
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "motion/react"
+import { toast } from "sonner"
 import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
 import { useVoiceRecording } from "@/hooks/useVoiceRecording"
@@ -276,12 +277,14 @@ export default function ConversePage() {
       markPrDone(msgId)
       setAwaitingPrConfirm(msgId, false)
       addMessage({ type: "orqestra", content: `✅ PR created successfully! [View PR on GitHub](${prRes.data.pr_url})`, inputMode: "text", isPrResult: true })
+      toast.success(`Pull request created for ${apiName || repoPath.split("/")[1] || "repo"}`)
     } catch (err: unknown) {
       markPrDone(msgId)
       setAwaitingPrConfirm(msgId, false)
       const e = err as { response?: { data?: { detail?: string } }; message?: string }
       const errorMsg = e?.response?.data?.detail || e?.message || "Failed to create PR"
       addMessage({ type: "orqestra", content: `❌ Failed to create PR: ${errorMsg}`, inputMode: "text", isPrResult: true })
+      toast.error("Failed to create pull request")
     } finally { setPrLoadingId(null) }
   }, [repoUrl, repoInfo, lastTargetFile, prLoadingId, accessToken, addMessage, markPrDone, setAwaitingPrConfirm])
 
@@ -425,14 +428,14 @@ export default function ConversePage() {
   const isRecording = voiceState === "recording"
   const isProcessing = voiceState === "processing"
   const isResponding = voiceState === "responding"
-  const cardBorder = isDark ? "border-violet-950/50" : "border-violet-200/80"
-  const cardBg = isDark ? "bg-[#0a000f]/80" : "bg-white/80"
+  const cardBorder = "border-[var(--border)]"
+  const cardBg = "bg-[var(--bg-card)]"
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="h-[calc(100vh-7rem)] flex flex-col">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="h-[calc(100vh-7rem)] flex flex-col theme-root">
       <div className="mb-4 flex-shrink-0">
-        <h1 className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>Converse</h1>
-        <p className={`text-xs ${isDark ? "text-slate-500" : "text-slate-500"}`}>Talk to ORQESTRA — speak or type</p>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Converse</h1>
+        <p className="text-xs text-[var(--text-muted)]">Talk to ORQESTRA — speak or type</p>
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row gap-5 min-h-0">
@@ -602,7 +605,7 @@ export default function ConversePage() {
                 ))}
                 <div ref={messagesEndRef} />
                 <div className="flex justify-end pt-2">
-                  <button onClick={handleClear} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all ${isDark ? "text-slate-600 hover:text-slate-400 hover:bg-white/5" : "text-violet-400 hover:text-violet-600 hover:bg-violet-100/50"}`}>
+                  <button onClick={handleClear} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[var(--border)] transition-all ${isDark ? "text-slate-400 hover:text-white hover:bg-white/10" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"}`}>
                     <RotateCcw size={11} /> Clear chat
                   </button>
                 </div>

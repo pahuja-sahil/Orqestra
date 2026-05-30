@@ -12,10 +12,31 @@
   to { transform: rotate(360deg); }
 }
 
-html {
-  transition: background-color 400ms ease, color 400ms ease;
+:root {
+  --bg-page: #FDFBF7;
+  --bg-card: #ffffff;
+  --bg-sidebar: #FDFBF7;
+  --bg-element: #f5f3ff;
+  --text-primary: #0f172a;
+  --text-muted: #64748b;
+  --text-accent: #7c3aed;
+  --border: #ddd6fe;
+  --shadow: 2px 0 10px rgba(139, 92, 246, 0.08);
 }
 
-.theme-transition {
-  transition: background-color 400ms ease, border-color 400ms ease, color 400ms ease, box-shadow 400ms ease;
+.dark {
+  --bg-page: #09090b;
+  --bg-card: #0a000f;
+  --bg-sidebar: #09090b;
+  --bg-element: rgba(91, 33, 182, 0.15);
+  --text-primary: #ffffff;
+  --text-muted: #94a3b8;
+  --text-accent: #a78bfa;
+  --border: rgba(109, 40, 217, 0.5);
+  --shadow: 2px 0 10px rgba(124, 58, 237, 0.2);
+}
+
+.theme-root,
+.theme-root * {
+  transition: background 400ms ease, border-color 400ms ease, color 400ms ease, box-shadow 400ms ease;
 }

@@ -268,11 +268,12 @@ async def create_pr(
             description=f"Auto-generated {real_api_name} integration for {body['repo_path']}",
             generated_code=body["generated_code"],
             language="python",
-            status="healthy",
+            status="pr_pending",
             repo_url=full_repo_url,
             repo_path=body["repo_path"],
             file_path=result["file"],
-            default_branch=body["default_branch"]
+            default_branch=body["default_branch"],
+            pr_url=result.get("pr_url", "")
         )
         db.add(integration)
         await db.commit()

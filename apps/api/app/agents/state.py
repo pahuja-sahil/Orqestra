@@ -2,6 +2,7 @@ from typing import TypedDict, Optional, Literal
 
 # Fix scope classification for self-healing
 FixScope = Literal["minimal", "moderate", "complete"]
+IntegrationType = Literal["new", "update", "repair"]
 
 
 class OrqestraState(TypedDict):
@@ -16,12 +17,13 @@ class OrqestraState(TypedDict):
     integration_steps: list
     language: str
     skip_codegen: bool
+    integration_type: Optional[str]  # "new", "update", or "repair"
 
     # Research
     retrieved_docs: list
     context: str
 
-    # Repo Context 
+    # Repo Context / Discovery
     repo_url: str
     repo_context: str
     target_file: str
@@ -30,6 +32,7 @@ class OrqestraState(TypedDict):
     existing_file_content: str
     user_id: str
     db: Optional[object]
+    docs_url: Optional[str]
 
     # Code Generation
     generated_code: str

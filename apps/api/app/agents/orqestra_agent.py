@@ -26,13 +26,14 @@ def build_orqestra_agent():
     Builds and compiles the multi-agent LangGraph.
 
     Flow:
-    planner → repo_context → researcher → codegen → evaluator
-                                                         ↓
-                                                    [score < 7?]
-                                                    /           \\
-                                                retry           end
-                                                  ↓               ↓
-                                               codegen         format → END
+    planner → repo_context ──[has target_file?]──→ researcher → codegen → evaluator
+                           ──[no target_file]──→ format → END (asks user)
+                                                                ↓
+                                                           [score < 7?]
+                                                           /           \\
+                                                       retry           end
+                                                         ↓               ↓
+                                                      codegen         format → END
     """
     graph = StateGraph(OrqestraState)
 
@@ -57,7 +58,19 @@ def build_orqestra_agent():
             "end": "format"
         }
     )
-    graph.add_edge("repo_context", "researcher")
+    def should_continue_after_repo_context(state: OrqestraState):
+        if state.get("skip_codegen"):
+            return "end"
+        return "continue"
+
+    graph.add_conditional_edges(
+        "repo_context",
+        should_continue_after_repo_context,
+        {
+            "continue": "researcher",
+            "end": "format"
+        }
+    )
     graph.add_edge("researcher", "codegen")
     graph.add_edge("codegen", "evaluator")
 
@@ -104,6 +117,7 @@ async def run_orqestra_agent(
         "integration_steps": [],
         "language": "python",
         "skip_codegen": False,
+        "integration_type": None,
         "retrieved_docs": [],
         "context": "",
         "repo_url": repo_url,
@@ -114,6 +128,7 @@ async def run_orqestra_agent(
         "existing_file_content": "",
         "user_id": user_id,
         "db": db,
+        "docs_url": None,
         "generated_code": "",
         "code_explanation": "",
         "quality_score": 0,

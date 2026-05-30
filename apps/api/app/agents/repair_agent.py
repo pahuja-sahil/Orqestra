@@ -33,7 +33,33 @@ async def repair_integration_code(
     
     language_lower = language.lower()
     
-    prompt = f"""You are a precise code repair specialist. Your ONLY job is to fix the exact problem described below. Do NOT reformat, restructure, or improve the code.
+    # Scale the repair scope based on error type
+    if error_type == "docs_drift":
+        scope_rule = f"""
+## RULES (API UPDATE)
+1. The API docs have changed — update the affected {api_name} code to match.
+2. You MAY rewrite entire functions if the new API requires different signatures.
+3. Keep OTHER integrations and helper code unchanged.
+4. Remove OLD deprecated patterns — do not keep both old and new versions.
+5. Update imports and auth if the new API version requires it.
+"""
+    elif error_type == "syntax_error":
+        scope_rule = """
+## RULES (SYNTAX FIX — MINIMAL CHANGE)
+1. Change ONLY the specific line(s) causing the syntax error.
+2. Keep EVERY other line EXACTLY IDENTICAL.
+3. Do NOT add, remove, or reorder any line that was not part of the error.
+4. Do NOT reformat, rename variables, add comments, or "improve" anything.
+"""
+    else:
+        scope_rule = """
+## RULES (TARGETED REPAIR)
+1. Fix the reported issue with minimal changes.
+2. Keep other code untouched.
+3. Do not reformat or restructure working code.
+"""
+
+    prompt = f"""You are a precise code repair specialist.
 
 ## CONTEXT
 - API Name: {api_name}
@@ -52,17 +78,11 @@ async def repair_integration_code(
 ## API DOCUMENTATION CONTEXT
 {api_docs_context}
 
-## RULES (ABSOLUTE REQUIRED)
-1. Change ONLY the specific line(s) causing the error
-2. Keep EVERY other line EXACTLY IDENTICAL — same spacing, same comments, same formatting
-3. Do NOT add, remove, or reorder any line that was not part of the error
-4. Do NOT reformat, rename variables, add comments, or "improve" anything
-5. If the error is a simple syntax error, ONLY fix the broken syntax
-6. If the API docs changed, ONLY update the affected function(s) — leave everything else untouched
+{scope_rule}
 
 ## OUTPUT FORMAT
 ```{language_lower}
-[EXACT original code with ONLY the error fixed — nothing else changed]
+[fixed code — with the issue corrected per the scope rules above]
 ```
 """
     
@@ -107,7 +127,63 @@ async def repair_integration_code(
                 }
         
         logger.info("repair_agent_success", api=api_name, code_lines=len(fixed_code.split("\n")))
-        
+
+        # Quality gate: run evaluator on the fix
+        try:
+            from app.agents.nodes.evaluator import evaluator_node, should_retry
+            from app.agents.state import OrqestraState
+
+            eval_state: OrqestraState = {
+                "user_input": f"Fix {api_name} integration: {error_message}",
+                "source": "repair",
+                "conversation_history": [],
+                "api_name": api_name,
+                "integration_goal": f"Repair {api_name} integration ({error_type})",
+                "integration_steps": [],
+                "language": language_lower,
+                "skip_codegen": False,
+                "integration_type": "repair",
+                "retrieved_docs": [],
+                "context": api_docs_context,
+                "repo_url": "",
+                "repo_context": repo_context,
+                "target_file": "",
+                "default_branch": "main",
+                "repo_path": "",
+                "existing_file_content": current_code,
+                "user_id": "",
+                "db": None,
+                "docs_url": None,
+                "generated_code": fixed_code,
+                "code_explanation": "",
+                "quality_score": 0,
+                "evaluation_notes": "",
+                "retry_count": 0,
+                "final_response": "",
+                "error": None,
+                "error_reason": None,
+                "repair_intent": None,
+                "fix_scope": None,
+            }
+
+            eval_result = await evaluator_node(eval_state)
+            eval_score = eval_result.get("quality_score", 0)
+            eval_notes = eval_result.get("evaluation_notes", "")
+
+            if eval_score < 7:
+                logger.warning("repair_agent_eval_low_score",
+                               api=api_name,
+                               score=eval_score,
+                               notes=eval_notes[:100])
+            else:
+                logger.info("repair_agent_eval_passed",
+                            api=api_name,
+                            score=eval_score)
+        except Exception as eval_err:
+            logger.warning("repair_agent_eval_skipped",
+                           api=api_name,
+                           error=str(eval_err)[:100])
+
         return {
             "success": True,
             "fixed_code": fixed_code

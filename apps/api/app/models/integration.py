@@ -28,6 +28,7 @@ class Integration(Base):
     repo_path = Column(String(500), nullable=True)
     file_path = Column(String(500), nullable=True)
     default_branch = Column(String(100), nullable=True)
+    pr_url = Column(String(500), nullable=True)
 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -36,3 +37,8 @@ class Integration(Base):
     health_check = Column(Text, nullable=True)
     docs_hash = Column(String(64), nullable=True)
     cached_docs_context = Column(Text, nullable=True)
+
+    docs_url = Column(String(500), nullable=True)
+    expected_health_status = Column(Integer, nullable=True)
+    docs_last_fetched = Column(DateTime(timezone=True), nullable=True)
+    deprecation_warnings = Column(Text, nullable=True)

@@ -54,7 +54,15 @@ async def check_http_health(integration: Integration) -> tuple[bool, str]:
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(endpoint)
-            healthy = response.status_code in [200, 401, 403]
+            expected = integration.expected_health_status
+            if expected is not None:
+                # If we know what status to expect, a change means regression
+                healthy = response.status_code == expected
+            else:
+                # First-time check: 200 and 401/403 are normal for unauthenticated hits
+                healthy = response.status_code in [200, 401, 403]
+                if healthy:
+                    integration.expected_health_status = response.status_code
             return healthy, f"HTTP {response.status_code}"
     except Exception as e:
         return False, str(e)
@@ -95,10 +103,22 @@ async def check_docs_drift(integration: Integration) -> tuple[bool, str, str]:
     """Check if API docs have changed and detect breaking changes"""
     api_name = integration.api_name.lower().strip()
     
-    docs_url = next(
+    docs_url = integration.docs_url or next(
         (url for key, url in API_DOCS_ENDPOINTS.items() if key in api_name),
         None
     )
+    
+    if not docs_url:
+        # Try dynamic discovery if no URL known yet
+        try:
+            from app.services.discovery_service import discover_api
+            discovered = await discover_api(api_name)
+            if discovered.get("docs_url"):
+                integration.docs_url = discovered["docs_url"]
+                docs_url = discovered["docs_url"]
+                logger.info("docs_url_discovered", api=api_name, url=docs_url)
+        except Exception:
+            pass
     
     if not docs_url:
         logger.info("docs_check_skip_no_url", api=api_name)
@@ -184,11 +204,25 @@ async def check_code_health(integration: Integration, db: AsyncSession) -> tuple
             
             try:
                 import ast
+                import io
+                import sys
                 tree = ast.parse(code)
                 function_names = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
                 logger.info("code_health_functions_found", name=integration.name, functions=function_names)
                 
-                exec(compile(code, '<string>', 'exec'), {'__name__': f'{integration.api_name}_test'})
+                # Capture stderr to detect deprecation warnings
+                old_stderr = sys.stderr
+                sys.stderr = io.StringIO()
+                try:
+                    exec(compile(code, '<string>', 'exec'), {'__name__': f'{integration.api_name}_test'})
+                    stderr_output = sys.stderr.getvalue()
+                finally:
+                    sys.stderr = old_stderr
+                
+                if stderr_output and ("DeprecationWarning" in stderr_output or "FutureWarning" in stderr_output or "PendingDeprecationWarning" in stderr_output):
+                    logger.warning("code_health_deprecation", name=integration.name, warnings=stderr_output[:300])
+                    integration.deprecation_warnings = stderr_output[:2000]
+                
                 logger.info("code_health_runtime_ok", name=integration.name)
                 return True, "Syntax and runtime OK"
             except NameError as e:
@@ -196,7 +230,12 @@ async def check_code_health(integration: Integration, db: AsyncSession) -> tuple
                 return False, f"NameError: {str(e)}"
             except ImportError as e:
                 logger.warning("code_health_import_error", name=integration.name, error=str(e))
-                return False, f"ImportError: {str(e)}"
+                failed_import = str(e).lower()
+                api_name = (integration.api_name or "").lower().strip()
+                # If the failed import IS this integration's own SDK, it's a real failure
+                if api_name and api_name in failed_import:
+                    return False, f"ImportError: {e}"
+                return True, f"Import skipped (not in sandbox): {str(e)}"
             except AttributeError as e:
                 logger.warning("code_health_attribute_error", name=integration.name, error=str(e))
                 return False, f"AttributeError: {str(e)}"
@@ -217,7 +256,7 @@ async def check_code_health(integration: Integration, db: AsyncSession) -> tuple
 
 async def check_single_integration(integration: Integration, db: AsyncSession):
     """Check a single integration and trigger repair if needed"""
-    from workers.repair import repair_integration_direct
+    from workers.repair import repair_integration_direct, MAX_REPAIR_ATTEMPTS
 
     integration.last_checked = datetime.now(timezone.utc)
     
@@ -243,17 +282,16 @@ async def check_single_integration(integration: Integration, db: AsyncSession):
             logger.info("healing_code_already_fixed", name=integration.name)
             return
 
-        if integration.repair_attempts >= 4:
-            integration.status = "failed"
-            logger.info("healing_exhausted_marking_failed", name=integration.name, attempts=integration.repair_attempts)
+        if integration.repair_attempts >= MAX_REPAIR_ATTEMPTS:
+            integration.status = "broken"
+            logger.info("healing_exhausted_marking_broken", name=integration.name, attempts=integration.repair_attempts)
             return
 
-        logger.info("integration_repair_stuck_restarting", name=integration.name)
-        integration.status = "broken"
-        integration.repair_attempts = 0
+        logger.info("healing_still_in_progress", name=integration.name, attempts=integration.repair_attempts)
+        return
 
-    elif integration.status in ("broken", "failed"):
-        logger.info("integration_already_in_repair", name=integration.name, status=integration.status)
+    elif integration.status == "broken":
+        logger.info("integration_already_broken", name=integration.name)
         return
 
     is_healthy = True
@@ -298,10 +336,10 @@ async def check_single_integration(integration: Integration, db: AsyncSession):
             errors=error_msg
         )
         
-        should_repair = integration.failure_count >= 3
+        should_repair = integration.failure_count >= 2
         
         if should_repair:
-            integration.status = "broken"
+            integration.status = "healing"
             
             user_result = await db.execute(
                 select(User).where(User.id == integration.user_id)
