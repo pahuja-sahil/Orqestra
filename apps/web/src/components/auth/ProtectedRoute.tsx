@@ -3,6 +3,7 @@ import { motion } from "motion/react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import api from "@/lib/api"
+import { toast } from "sonner"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -28,6 +29,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
           headers: { Authorization: `Bearer ${token}` }
         })
         setUser(userRes.data)
+        toast.success("Logged in successfully")
         setChecking(false)
       } catch {
         navigate("/auth/login")

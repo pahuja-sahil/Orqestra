@@ -17,6 +17,7 @@
   --bg-card: #ffffff;
   --bg-sidebar: #fbfcf8;
   --bg-element: #f5f3ff;
+  --bg-toast: #fefffa;
   --text-primary: #0f172a;
   --text-muted: #64748b;
   --text-accent: #7c3aed;
@@ -29,6 +30,7 @@
   --bg-card: #040200;
   --bg-sidebar: #0E0C0A;
   --bg-element: rgba(91, 33, 182, 0.15);
+  --bg-toast: #2f2f2e;
   --text-primary: #ffffff;
   --text-muted: #94a3b8;
   --text-accent: #a78bfa;

@@ -34,10 +34,10 @@ function normalizeRepoUrl(url: string): string {
 }
 
 const thinkingMessages = [
-  "Processing your request...",
-  "Working on it...",
-  "Hang tight...",
-  "Almost there...",
+  "Processing your request",
+  "Working on it",
+  "Hang tight",
+  "Almost there",
 ]
 
 const processingMessages: Record<string, string[]> = {
@@ -48,13 +48,13 @@ const processingMessages: Record<string, string[]> = {
 
 function WaveAnimation({ isDark }: { isDark: boolean }) {
   return (
-    <div className="flex items-center justify-center gap-[3px] h-10">
+    <div className="flex items-center justify-center gap-0.75 h-10">
       {Array.from({ length: 20 }).map((_, i) => (
         <motion.div
           key={i}
           animate={{ scaleY: [0.3, 1, 0.3], opacity: [0.4, 1, 0.4] }}
           transition={{ duration: 0.8 + (i % 5) * 0.1, repeat: Infinity, delay: i * 0.05 }}
-          className={`w-[3px] rounded-full ${isDark ? "bg-violet-500" : "bg-violet-600"}`}
+          className={`w-0.75 rounded-full ${isDark ? "bg-violet-500" : "bg-violet-600"}`}
           style={{ height: `${16 + (i % 7) * 4}px` }}
         />
       ))}
@@ -105,7 +105,7 @@ function ThinkingBubble({ isDark }: { isDark: boolean }) {
         <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-violet-400" : "text-violet-600"}`}>ORQESTRA</p>
       </div>
       <p className={`text-sm leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-        {thinkingMessages[msgIndex]}<span className="font-mono">{dots}</span>
+        {thinkingMessages[msgIndex]}<span className="font-mono font-semibold">{dots}</span>
       </p>
     </div>
   )
@@ -139,7 +139,7 @@ function OrqestraResponse({ content, isDark }: { content: string; isDark: boolea
         strong: ({ children }) => <strong className={`font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>{children}</strong>,
         ul: ({ children }) => <ul className="space-y-1.5 mb-3 ml-0 list-none">{children}</ul>,
         ol: ({ children }) => <ol className="space-y-1.5 mb-3 list-decimal list-inside">{children}</ol>,
-        li: ({ children }) => <li className={`flex items-start gap-2 text-sm ${isDark ? "text-slate-200" : "text-slate-700"}`}><span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-violet-500" /><span className="flex-1">{children}</span></li>,
+        li: ({ children }) => <li className={`flex items-start gap-2 text-sm ${isDark ? "text-slate-200" : "text-slate-700"}`}><span className="mt-2 w-1.5 h-1.5 rounded-full shrink-0 bg-violet-500" /><span className="flex-1">{children}</span></li>,
         code: ({ children, className }) => <CodeBlock isDark={isDark} className={className}>{children}</CodeBlock>,
         a: ({ href, children }) => <a href={href ?? ""} target="_blank" rel="noopener noreferrer" className={`underline underline-offset-2 ${isDark ? "text-violet-400 hover:text-violet-300" : "text-violet-600 hover:text-violet-700"}`}>{children}</a>,
         em: ({ children }) => <em className={`not-italic text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>{children}</em>,
@@ -433,9 +433,9 @@ export default function ConversePage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="h-[calc(100vh-7rem)] flex flex-col theme-root">
-      <div className="mb-4 flex-shrink-0">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Converse</h1>
-        <p className="text-xs text-[var(--text-muted)]">Talk to ORQESTRA — speak or type</p>
+      <div className="mb-4 shrink-0">
+        <h1 className="text-2xl font-bold text-(--text-primary)">Converse</h1>
+        <p className="text-xs text-(--text-muted)">Talk to ORQESTRA — speak or type</p>
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row gap-5 min-h-0">
@@ -537,7 +537,7 @@ export default function ConversePage() {
                 placeholder="Ask to integrate an API, or paste a repo URL..." rows={3}
                 className={`flex-1 resize-none rounded-xl px-3 py-2.5 text-sm outline-none border transition-all ${isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-violet-700" : "bg-violet-50/40 border-violet-200 text-slate-900 placeholder:text-violet-300 focus:border-violet-400"}`} />
               <button onClick={() => handleTextSubmit()} disabled={!textInput.trim() || isSubmitting}
-                className={`p-3 rounded-xl flex-shrink-0 transition-all ${!textInput.trim() || isSubmitting ? (isDark ? "bg-slate-800 text-slate-600" : "bg-slate-100 text-slate-400") : (isDark ? "bg-violet-700 text-white hover:bg-violet-600" : "bg-violet-600 text-white hover:bg-violet-500")}`}>
+                className={`p-3 rounded-xl shrink-0 transition-all ${!textInput.trim() || isSubmitting ? (isDark ? "bg-slate-800 text-slate-600" : "bg-slate-100 text-slate-400") : (isDark ? "bg-violet-700 text-white hover:bg-violet-600" : "bg-violet-600 text-white hover:bg-violet-500")}`}>
                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               </button>
             </div>
@@ -561,7 +561,7 @@ export default function ConversePage() {
                   <motion.div key={msg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                     className={`p-3 rounded-xl ${msg.type === "user"
                       ? (isDark ? "bg-white/5 border border-white/10" : "bg-violet-50 border border-violet-200")
-                      : (isDark ? "bg-violet-950/30 border border-violet-900/40" : "bg-gradient-to-br from-violet-50 to-white border border-violet-200")}`}>
+                      : (isDark ? "bg-violet-950/30 border border-violet-900/40" : "bg-linear-to-br from-violet-50 to-white border border-violet-200")}`}>
                     <div className="flex items-center gap-2 mb-1.5">
                       {msg.type === "user" ? (
                         <><MessageSquare size={11} className={isDark ? "text-slate-500" : "text-violet-400"} />
@@ -572,12 +572,12 @@ export default function ConversePage() {
                       )}
                     </div>
                     {msg.type === "user" ? (
-                      <p className={`text-sm leading-relaxed break-words ${isDark ? "text-slate-200" : "text-slate-800"}`}>{msg.content}</p>
+                      <p className={`text-sm leading-relaxed wrap-break-word ${isDark ? "text-slate-200" : "text-slate-800"}`}>{msg.content}</p>
                     ) : msg.isPlaceholder ? (
                       <ThinkingBubble isDark={isDark} />
                     ) : (
                       <>
-                        <div className="break-words min-w-0"><TypewriterText content={msg.content} isDark={isDark} isCompleted={msg.isCompleted} /></div>
+                        <div className="wrap-break-word min-w-0"><TypewriterText content={msg.content} isDark={isDark} isCompleted={msg.isCompleted} /></div>
                         {msg.awaitingPrConfirm && !msg.isPrResult && (
                           <PrConfirmButtons
                             isDark={isDark}
@@ -605,7 +605,7 @@ export default function ConversePage() {
                 ))}
                 <div ref={messagesEndRef} />
                 <div className="flex justify-end pt-2">
-                  <button onClick={handleClear} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[var(--border)] transition-all ${isDark ? "text-slate-400 hover:text-white hover:bg-white/10" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"}`}>
+                  <button onClick={handleClear} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-(--border) transition-all ${isDark ? "text-slate-400 hover:text-white hover:bg-white/10" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"}`}>
                     <RotateCcw size={11} /> Clear chat
                   </button>
                 </div>

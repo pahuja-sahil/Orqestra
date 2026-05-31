@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
 import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
-import { Shield, User, Key, CheckCircle, AlertCircle, ShieldOff, XCircle } from "lucide-react"
+import { Shield, User, CheckCircle, AlertCircle, ShieldOff, XCircle } from "lucide-react"
 import { IconBrandGithub as Github } from "@tabler/icons-react"
 import api from "@/lib/api"
 
@@ -68,7 +68,7 @@ export default function SettingsPage() {
         headers: { Authorization: `Bearer ${accessToken}` }
       })
       setGithubStatus({ connected: false })
-      toast.success("GitHub disconnected")
+      toast.success("GitHub disconnected successfully")
     } catch {
       toast.error("Failed to disconnect GitHub")
     }
@@ -123,7 +123,7 @@ export default function SettingsPage() {
       setUser({ ...user!, is_2fa_enabled: false })
       setStep("idle")
       setTotpCode("")
-      toast.info("Two-factor authentication disabled")
+      toast.success("Two-factor authentication disabled")
     } catch {
       setError("Invalid code. 2FA was not disabled.")
       toast.error("Invalid code. Two-factor was not disabled.")
@@ -163,7 +163,7 @@ export default function SettingsPage() {
       className="max-w-2xl theme-root"
     >
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2 text-[var(--text-primary)]">
+        <h1 className="text-3xl font-bold mb-2 text-(--text-primary)">
           Settings
         </h1>
         <p className={subClass}>Manage your account and security preferences</p>
@@ -183,10 +183,10 @@ export default function SettingsPage() {
           <h2 className={titleClass}>Profile</h2>
         </div>
         <div className="flex items-center gap-4">
-          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0 ${
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold shrink-0 ${
             isDark
-              ? "bg-gradient-to-br from-violet-900 to-violet-950 text-violet-300 border border-violet-800/50"
-              : "bg-gradient-to-br from-violet-100 to-violet-50 text-violet-700 border border-violet-200"
+              ? "bg-linear-to-br from-violet-900 to-violet-950 text-violet-300 border border-violet-800/50"
+              : "bg-linear-to-br from-violet-100 to-violet-50 text-violet-700 border border-violet-200"
           }`}>
             {user?.name?.charAt(0)?.toUpperCase() || "U"}
           </div>
@@ -503,21 +503,6 @@ export default function SettingsPage() {
         </AnimatePresence>
       </motion.div>
 
-      {/* API Keys Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className={cardClass}
-      >
-        <div className="flex items-center gap-3 mb-3">
-          <div className={`p-2 rounded-xl ${isDark ? "bg-violet-950/50" : "bg-violet-50"}`}>
-            <Key size={16} className={isDark ? "text-violet-400" : "text-violet-600"} />
-          </div>
-          <h2 className={titleClass}>API Keys</h2>
-        </div>
-        <p className={subClass}>API key management coming soon</p>
-      </motion.div>
     </motion.div>
   )
 }

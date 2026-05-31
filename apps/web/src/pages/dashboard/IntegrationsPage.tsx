@@ -354,7 +354,7 @@ export default function IntegrationsPage() {
         if (prev && prev !== integration.status) {
           const name = integration.api_name || integration.name
           if (integration.status === "healing") {
-            toast.info(`Self-healing started for ${name}`)
+            toast.success(`Self-healing started for ${name}`)
           } else if (integration.status === "broken") {
             toast.error(`${name} is unreachable after repairs`)
           } else if (integration.status === "healthy") {
