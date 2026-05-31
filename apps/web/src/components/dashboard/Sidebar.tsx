@@ -40,17 +40,17 @@ export default function Sidebar() {
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="fixed left-0 top-0 h-full w-64 flex flex-col border-r z-40 bg-[var(--bg-sidebar)] border-[var(--border)] shadow-[var(--shadow)]"
+      className="fixed left-0 top-0 h-full w-64 flex flex-col border-r z-40 bg-(--bg-sidebar) border-(--border) shadow-(--shadow)"
     >
-      <div className="flex items-center gap-3 px-7 py-5 border-b border-[var(--border)]">
+      <div className="flex items-center gap-3 px-7 py-5  border-(--border)">
         <motion.div
           whileHover={{ rotate: 10 }}
           transition={{ duration: 0.2 }}
-          className="p-2 rounded-xl bg-[var(--bg-element)]"
+          className="p-2 rounded-xl bg-(--bg-element)"
         >
-          <Zap size={16} className="text-[var(--text-accent)]" />
+          <Zap size={16} className="text-(--text-accent)" />
         </motion.div>
-        <span className="font-bold text-lg tracking-tight text-[var(--text-primary)]">
+        <span className="font-bold text-lg tracking-tight text-(--text-primary)">
           ORQESTRA
         </span>
       </div>
@@ -69,8 +69,8 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium ${
                   isActive
-                    ? "bg-[var(--bg-element)] text-[var(--text-accent)] border border-[var(--border)] shadow-[var(--shadow)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-accent)] hover:bg-[var(--bg-element)]"
+                    ? "bg-(--bg-element) text-(--text-accent) border border-(--border) shadow-(--shadow)"
+                    : "text-(--text-muted) hover:text-(--text-accent) hover:bg-(--bg-element)"
                 }`
               }
             >
@@ -78,7 +78,7 @@ export default function Sidebar() {
                 <>
                   <Icon
                     size={17}
-                    className={isActive ? "text-[var(--text-accent)]" : ""}
+                    className={isActive ? "text-(--text-accent)" : ""}
                   />
                   {label}
                   {isActive && (
@@ -94,20 +94,20 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-3 py-4 border-t border-[var(--border)]">
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl mb-2 border bg-[var(--bg-element)] border-[var(--border)] shadow-[var(--shadow)]">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+      <div className="px-3 py-4  border-(--border)">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl mb-2 border bg-(--bg-element) border-(--border) shadow-(--shadow)">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${
             isDark
-              ? "bg-gradient-to-br from-violet-900 to-violet-950 text-violet-300 border border-violet-800/50"
-              : "bg-gradient-to-br from-violet-100 to-violet-50 text-violet-700 border border-violet-200"
+              ? "bg-linear-to-br from-violet-900 to-violet-950 text-violet-300 border border-violet-800/50"
+              : "bg-linear-to-br from-violet-100 to-violet-50 text-violet-700 border border-violet-200"
           }`}>
             {user?.name?.charAt(0)?.toUpperCase() || "U"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate text-[var(--text-primary)]">
+            <p className="text-sm font-semibold truncate text-(--text-primary)">
               {user?.name || "User"}
             </p>
-            <p className="text-xs truncate text-[var(--text-muted)]">
+            <p className="text-xs truncate text-(--text-muted)">
               {user?.email || ""}
             </p>
           </div>
@@ -117,7 +117,7 @@ export default function Sidebar() {
           whileHover={{ x: 3 }}
           whileTap={{ scale: 0.97 }}
           onClick={handleLogout}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold border bg-[var(--bg-element)] border-[var(--border)] text-[var(--text-muted)] ${
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold border bg-(--bg-element) border-(--border) text-(--text-muted) ${
             isDark
               ? "hover:text-violet-300 hover:bg-violet-950/40 hover:border-violet-800/60"
               : "hover:text-violet-700 hover:bg-violet-50 hover:border-violet-300"
