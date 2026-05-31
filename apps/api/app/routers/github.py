@@ -245,6 +245,33 @@ async def create_pr(
 
     try:
         from app.services.github_service import create_integration_pr
+
+        # Store the real api_name from the converse session, not the repo name
+        real_api_name = body.get("real_api_name") or body["api_name"]
+        # Ensure repo_url is always stored with https:// prefix
+        raw_repo_url = body.get("repo_url", "")
+        full_repo_url = raw_repo_url if raw_repo_url.startswith("http") else f"https://github.com/{raw_repo_url}"
+
+        # Create integration BEFORE PR creation so the self-healing icon
+        # appears immediately on Logs and Integrations pages.
+        integration = Integration(
+            user_id=uuid.UUID(user_id),
+            name=f"{real_api_name} integration",
+            api_name=real_api_name,
+            description=f"Auto-generated {real_api_name} integration for {body['repo_path']}",
+            generated_code=body["generated_code"],
+            language="python",
+            status="healing",
+            repo_url=full_repo_url,
+            repo_path=body["repo_path"],
+            file_path=body["target_file"],
+            default_branch=body["default_branch"],
+            pr_url=""
+        )
+        db.add(integration)
+        await db.commit()
+        await db.refresh(integration)
+
         result = await create_integration_pr(
             repo_path=body["repo_path"],
             api_name=body["api_name"],
@@ -255,27 +282,9 @@ async def create_pr(
             db=db
         )
 
-        # Store the real api_name from the converse session, not the repo name
-        real_api_name = body.get("real_api_name") or body["api_name"]
-        # Ensure repo_url is always stored with https:// prefix
-        raw_repo_url = body.get("repo_url", "")
-        full_repo_url = raw_repo_url if raw_repo_url.startswith("http") else f"https://github.com/{raw_repo_url}"
-
-        integration = Integration(
-            user_id=uuid.UUID(user_id),
-            name=f"{real_api_name} integration",
-            api_name=real_api_name,
-            description=f"Auto-generated {real_api_name} integration for {body['repo_path']}",
-            generated_code=body["generated_code"],
-            language="python",
-            status="pr_pending",
-            repo_url=full_repo_url,
-            repo_path=body["repo_path"],
-            file_path=result["file"],
-            default_branch=body["default_branch"],
-            pr_url=result.get("pr_url", "")
-        )
-        db.add(integration)
+        integration.file_path = result["file"]
+        integration.status = "pr_pending"
+        integration.pr_url = result.get("pr_url", "")
         await db.commit()
         
         logger.info("integration_created_from_pr", repo=body["repo_path"])
@@ -283,6 +292,12 @@ async def create_pr(
         return result
 
     except ValueError as e:
+        if 'integration' in dir() and integration.id:
+            integration.status = "broken"
+            await db.commit()
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        if 'integration' in dir() and integration.id:
+            integration.status = "broken"
+            await db.commit()
         raise HTTPException(status_code=500, detail="PR creation failed")

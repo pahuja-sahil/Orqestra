@@ -54,6 +54,21 @@ async def repo_context_node(state: OrqestraState) -> OrqestraState:
 
         # --- User specified a target file ---
         target_file = user_target_file
+
+        # If user specified a bare filename (no directory), prepend the
+        # directory from the best matching file in the repo to avoid
+        # placing new files at the repo root (e.g. "converse.py" with
+        # best_file="chatService/chat.py" → "chatService/converse.py").
+        if "/" not in target_file and "\\" not in target_file:
+            best_file = repo_data.get("best_file", "")
+            if best_file and "/" in best_file:
+                directory = best_file.rsplit("/", 1)[0]
+                target_file = f"{directory}/{target_file}"
+                logger.info("prepended_directory_to_target_file",
+                            original=user_target_file,
+                            resolved=target_file,
+                            best_file=best_file)
+
         existing_content = repo_data["key_files_content"].get(target_file, "")
 
         state["target_file"] = target_file

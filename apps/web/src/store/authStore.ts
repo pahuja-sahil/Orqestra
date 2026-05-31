@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useConverseStore } from './converseStore'
 
 interface User {
   id: string
@@ -28,6 +29,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
   setUser: (user) =>
     set({ user }),
 
-  logout: () =>
-    set({ accessToken: null, user: null, isAuthenticated: false }),
+  logout: () => {
+    useConverseStore.getState().clearMessages()
+    localStorage.removeItem('orqestra-converse')
+    set({ accessToken: null, user: null, isAuthenticated: false })
+  },
 }))

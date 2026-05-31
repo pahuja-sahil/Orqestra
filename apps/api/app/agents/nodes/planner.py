@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from langchain_openai import ChatOpenAI
@@ -12,26 +13,30 @@ openrouter_llm = ChatOpenAI(
     model="meta-llama/llama-3.3-70b-instruct:free",
     api_key=settings.OPENROUTER_API_KEY or "none",
     base_url="https://openrouter.ai/api/v1",
-    temperature=0.2
+    temperature=0.2,
+    max_retries=0,
+    timeout=15
 )
 
 # Groq (Llama 3.3 70B Versatile) - Fallback
 groq_llm = ChatGroq(
     model="llama-3.3-70b-versatile",
     api_key=settings.GROQ_API_KEY or "none",
-    temperature=0.2
+    temperature=0.2,
+    max_retries=0,
+    timeout=15
 )
 
 async def get_planner_response(prompt: str) -> str:
     """Try OpenRouter first, fall back to Groq on any error."""
     if settings.OPENROUTER_API_KEY:
         try:
-            response = await openrouter_llm.ainvoke(prompt)
+            response = await asyncio.wait_for(openrouter_llm.ainvoke(prompt), timeout=15)
             return response.content
         except Exception as e:
             logger.warning("planner_openrouter_unavailable_falling_back_to_groq", error=str(e)[:100])
     
-    response = await groq_llm.ainvoke(prompt)
+    response = await asyncio.wait_for(groq_llm.ainvoke(prompt), timeout=15)
     return response.content
 
 async def planner_node(state: OrqestraState) -> OrqestraState:

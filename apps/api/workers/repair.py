@@ -177,6 +177,13 @@ async def handle_successful_repair(integration: Integration, fixed_code: str, us
     """Handle successful repair - update DB, create PR, notify user"""
 
     integration.generated_code = fixed_code
+
+    # Keep "healing" status for minimum window so frontend 30s poll
+    # catches the self-healing icon on Logs and Integrations pages.
+    await db.commit()
+    logger.info("healing_minimum_window", name=integration.name)
+    await asyncio.sleep(5)
+
     integration.status = "pr_pending"
     integration.failure_count = 0
     integration.last_repaired = datetime.now(timezone.utc)

@@ -1,3 +1,4 @@
+import asyncio
 from app.agents.state import OrqestraState
 from app.services.vector_service import retrieve_relevant_chunks, ingest_document
 from app.services.discovery_service import discover_api
@@ -29,11 +30,11 @@ async def researcher_node(state: OrqestraState) -> OrqestraState:
     seen = set()
 
     async def run_queries(queries: list[str]):
-        for query in queries:
-            chunks = await retrieve_relevant_chunks(
-                query=query,
-                n_results=3
-            )
+        results = await asyncio.gather(*[
+            retrieve_relevant_chunks(query=q, n_results=3)
+            for q in queries
+        ])
+        for chunks in results:
             for chunk in chunks:
                 if chunk not in seen:
                     seen.add(chunk)

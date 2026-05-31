@@ -35,7 +35,7 @@ gemini_llm = ChatGoogleGenerativeAI(
 
 
 async def get_llm_response(prompt: str) -> str:
-    """Try multiple LLM providers with exponential backoff on rate limits."""
+    """Try multiple LLM providers, skip on rate limits immediately."""
     providers = []
     
     if settings.GEMINI_API_KEY:
@@ -50,31 +50,27 @@ async def get_llm_response(prompt: str) -> str:
     
     last_error = None
     for provider_name, llm in providers:
-        for attempt in range(3):
-            try:
-                if attempt > 0:
-                    wait_time = min(2 ** attempt, 30)
-                    logger.info(f"retry_{provider_name}_attempt_{attempt + 1}", wait=wait_time)
-                    await asyncio.sleep(wait_time)
-                
-                response = await llm.ainvoke(prompt)
-                logger.info(f"llm_success_{provider_name}")
-                return response.content
-            except Exception as e:
-                error_str = str(e)
-                last_error = e
-                is_rate_limit = "429" in error_str or "rate_limit" in error_str.lower()
-                
-                logger.warning(f"llm_error_{provider_name}", 
-                               attempt=attempt + 1, 
-                               error=error_str[:100],
-                               rate_limit=is_rate_limit)
-                
-                if not is_rate_limit and attempt >= 2:
-                    break
-                    
-                if attempt < 2:
-                    continue
+        try:
+            response = await asyncio.wait_for(
+                llm.ainvoke(prompt),
+                timeout=30
+            )
+            logger.info(f"llm_success_{provider_name}")
+            return response.content
+        except asyncio.TimeoutError:
+            logger.warning(f"llm_timeout_{provider_name}")
+            last_error = TimeoutError(f"{provider_name} timed out after 30s")
+            continue
+        except Exception as e:
+            error_str = str(e)
+            last_error = e
+            is_rate_limit = ("429" in error_str or
+                           "rate_limit" in error_str.lower() or
+                           "resource_exhausted" in error_str.lower())
+            logger.warning(f"llm_error_{provider_name}",
+                          error=error_str[:100],
+                          rate_limit=is_rate_limit)
+            continue
     
     raise Exception(f"All LLM providers failed. Last error: {last_error}")
 
