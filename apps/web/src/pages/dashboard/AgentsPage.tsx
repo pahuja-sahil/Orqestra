@@ -55,7 +55,7 @@ export default function AgentsPage() {
       </div>
 
       {/* Pipeline visualization */}
-      <div className="rounded-3xl border p-6 mb-6 bg-[var(--bg-card)] border-[var(--border)] shadow-xl">
+      <div className="rounded-3xl border p-6 mb-6 bg-[var(--bg-card)] border-[var(--border)] shadow-lg">
         <h2 className="text-sm font-semibold mb-5 text-[var(--text-muted)]">
           PIPELINE
         </h2>

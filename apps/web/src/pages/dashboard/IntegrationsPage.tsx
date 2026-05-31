@@ -126,7 +126,7 @@ function DetailPanel({
         exit={{ scale: 0.95, opacity: 0, y: 20 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border p-6 shadow-2xl bg-[var(--bg-card)] border-[var(--border)]"
+        className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border p-6 shadow-lg bg-[var(--bg-card)] border-[var(--border)]"
       >
         {/* Close button */}
         <button
@@ -453,7 +453,7 @@ export default function IntegrationsPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="rounded-3xl border p-16 text-center bg-[var(--bg-card)] border-[var(--border)] shadow-xl"
+            className="rounded-3xl border p-16 text-center bg-[var(--bg-card)] border-[var(--border)] shadow-lg"
           >
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-[var(--bg-element)]">
               <Link2 size={28} className="text-[var(--text-accent)]" />

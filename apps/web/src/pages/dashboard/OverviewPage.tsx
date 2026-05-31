@@ -151,14 +151,14 @@ export default function OverviewPage() {
       )}
 
       {/* Live Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
         {stats.map(({ icon: Icon, label, value, color }, i) => (
           <motion.div
             key={label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: i * 0.1 }}
-            className={`p-5 rounded-2xl border bg-[var(--bg-card)] border-[var(--border)] ${
+            className={`p-4 rounded-2xl border bg-[var(--bg-card)] border-[var(--border)] ${
               isDark ? "hover:border-violet-500/60" : "hover:border-violet-300 hover:shadow-md hover:shadow-violet-100/50"
             }`}
           >
@@ -178,7 +178,7 @@ export default function OverviewPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.4 }}
-        className="rounded-2xl border flex-1 bg-[var(--bg-card)] border-[var(--border)] shadow-2xl"
+        className="rounded-2xl border flex-1 bg-[var(--bg-card)] border-[var(--border)] shadow-lg"
       >
         {loadingStats ? (
           <div className="flex items-center justify-center py-20">

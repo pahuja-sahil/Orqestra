@@ -114,14 +114,14 @@ export default function LogsPage() {
           />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-3xl border p-16 text-center bg-[var(--bg-card)] border-[var(--border)] shadow-xl">
+        <div className="rounded-3xl border p-16 text-center bg-[var(--bg-card)] border-[var(--border)] shadow-lg">
           <ScrollText size={32} className="mx-auto mb-4 text-[var(--border)]" />
           <p className="text-sm text-[var(--text-muted)]">
             No logs found
           </p>
         </div>
       ) : (
-        <div className="rounded-3xl border overflow-hidden bg-[var(--bg-card)] border-[var(--border)] shadow-xl">
+        <div className="rounded-3xl border overflow-hidden bg-[var(--bg-card)] border-[var(--border)] shadow-lg">
           {/* Table header */}
           <div className="grid grid-cols-5 gap-4 px-5 py-3 text-xs font-semibold tracking-wider border-b text-[var(--text-muted)] border-[var(--border)]">
             <span className="col-span-2">INTEGRATION</span>

@@ -151,7 +151,7 @@ export default function SettingsPage() {
     }
   }
 
-  const cardClass = "p-6 rounded-2xl border mb-5 bg-[var(--bg-card)] border-[var(--border)] shadow-2xl"
+  const cardClass = "p-6 rounded-2xl border mb-5 bg-[var(--bg-card)] border-[var(--border)] shadow-lg"
   const titleClass = "text-base font-semibold text-[var(--text-primary)]"
   const subClass = "text-sm text-[var(--text-muted)]"
 
