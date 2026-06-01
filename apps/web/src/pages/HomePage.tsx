@@ -200,13 +200,13 @@ export default function HomePage() {
             transition={{ duration: 0.7 }}
             className="text-center mb-12 md:mb-16"
           >
-            <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-4 ${h1}`}>
-              Everything you need,{" "}
+            <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-5 leading-tight ${h1}`}>
+              Your API integration pipeline,{" "}
               <span className={`bg-linear-to-r bg-clip-text text-transparent ${gradR}`}>
-                nothing you don't
+                orchestrated by AI
               </span>
             </h2>
-            <p className={`text-base sm:text-lg max-w-xl mx-auto ${muted}`}>
+            <p className={`text-base sm:text-lg max-w-xl mx-auto mt-3 ${muted}`}>
               A complete AI platform built for developers who ship fast and sleep well.
             </p>
           </motion.div>
@@ -248,13 +248,13 @@ export default function HomePage() {
             <span className={`inline-block px-4 py-1.5 rounded-full border text-xs font-semibold tracking-widest uppercase mb-4 ${badge}`}>
               About ORQESTRA
             </span>
-            <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-4 ${h1}`}>
+            <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 mt-4 ${h1}`}>
               The AI conductor for your{" "}
               <span className={`bg-linear-to-r bg-clip-text text-transparent ${gradR}`}>
                 API integrations
               </span>
             </h2>
-            <p className={`text-base sm:text-lg max-w-2xl mx-auto ${muted}`}>
+            <p className={`text-base sm:text-lg max-w-2xl mx-auto mt-4 ${muted}`}>
               ORQESTRA is an autonomous AI that orchestrates the entire integration lifecycle — from understanding
               your requirements to writing production code, creating pull requests, and healing itself when things break.
             </p>
@@ -380,7 +380,35 @@ export default function HomePage() {
           </div>
         </motion.div>
       </section>
-
+      {/* ── FOOTER ── */}
+      <footer className={`border-t px-4 sm:px-6 py-8 sm:py-10 transition-colors duration-500 ${
+        isDark ? "border-violet-950/50 bg-zinc-950" : "border-violet-100 bg-zinc-50"
+      }`}>
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className={`p-1.5 rounded-lg ${isDark ? "bg-violet-950/50" : "bg-violet-50"}`}>
+              <img src="/webhook.svg" alt="Orqestra Logo" className="w-5 h-5" />
+            </div>
+            <span className={`text-sm font-bold tracking-tight ${isDark ? "text-white" : "text-slate-900"}`}>
+              ORQESTRA
+            </span>
+          </div>
+          <p className={`text-xs sm:text-sm ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+            © {new Date().getFullYear()} ORQESTRA. All rights reserved.
+          </p>
+          <div className="flex items-center gap-4 sm:gap-6">
+            {["Privacy", "Terms", "Docs"].map((link) => (
+              <a key={link} href="#"
+                className={`text-xs sm:text-sm transition-colors duration-200 ${
+                  isDark ? "text-slate-600 hover:text-violet-400" : "text-slate-400 hover:text-violet-600"
+                }`}
+              >
+                {link}
+              </a>
+            ))}
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

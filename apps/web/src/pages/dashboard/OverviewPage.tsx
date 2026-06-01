@@ -3,7 +3,7 @@ import { motion } from "motion/react"
 import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
 import { Link } from "react-router-dom"
-import { Link2, CheckCircle, AlertCircle, RefreshCw, Zap, X, Clock, GitBranch, GitPullRequest } from "lucide-react"
+import { Link2, CheckCircle, AlertCircle, RefreshCw, X, Clock, GitBranch, GitPullRequest } from "lucide-react"
 import api from "@/lib/api"
 
 interface Integration {
@@ -191,7 +191,7 @@ export default function OverviewPage() {
         ) : integrations.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center p-12">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-[var(--bg-element)]">
-              <Zap size={28} className="text-[var(--text-accent)]" />
+              <img src="/webhook.svg" alt="Orqestra Logo" className="w-9 h-9" />
             </div>
             <h3 className="text-lg font-semibold mb-2 text-[var(--text-primary)]">
               No integrations yet
@@ -205,7 +205,7 @@ export default function OverviewPage() {
                 isDark ? "bg-violet-700 hover:bg-violet-600" : "bg-violet-600 hover:bg-violet-500"
               }`}
             >
-              <Zap size={15} />
+              <img src="/webhook.svg" alt="Orqestra Logo" className="w-5 h-5 brightness-0 invert" />
               Create First Integration
             </Link>
           </div>

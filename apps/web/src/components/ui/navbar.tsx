@@ -2,7 +2,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { useNavigate } from "react-router-dom"
 import { useThemeStore } from "@/store/themeStore"
-import { Sun, Moon, Zap, Menu, X } from "lucide-react"
+import { Sun, Moon, Menu, X } from "lucide-react"
 
 const NAV_ITEMS = ["Features", "About Us"]
 
@@ -43,7 +43,7 @@ export function Navbar() {
       >
         <div className="flex items-center gap-2">
           <div className={`p-1.5 rounded-lg ${isDark ? "bg-violet-950/50" : "bg-violet-50"}`}>
-            <Zap size={18} className={isDark ? "text-violet-500" : "text-violet-600"} />
+            <img src="/webhook.svg" alt="Orqestra Logo" className="w-5 h-5" />
           </div>
           <span className={`text-lg font-bold tracking-tight ${isDark ? "text-white" : "text-slate-900"}`}>
             ORQESTRA

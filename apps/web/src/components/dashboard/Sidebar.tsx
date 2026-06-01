@@ -3,9 +3,10 @@ import { NavLink, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "motion/react"
 import { useThemeStore } from "@/store/themeStore"
 import { useAuthStore } from "@/store/authStore"
+import { toast } from "sonner" // Added sonner import
 import {
   LayoutDashboard, Link2, Bot, ScrollText,
-  MessageSquare, Settings, Zap, LogOut, Menu, X
+  MessageSquare, Settings, LogOut, Menu, X
 } from "lucide-react"
 import api from "@/lib/api"
 
@@ -27,7 +28,11 @@ export default function Sidebar() {
   const handleLogout = async () => {
     try {
       await api.post("/api/auth/logout")
+      toast.success("Logged out successfully") // Trigger toast
+    } catch (error) {
+      toast.success("Logged out successfully") // Fallback trigger
     } finally {
+      setMobileOpen(false) // Close mobile drawer
       logout()
       navigate("/auth/login")
     }
@@ -41,7 +46,7 @@ export default function Sidebar() {
         <motion.div whileHover={{ rotate: 10 }} transition={{ duration: 0.2 }}
           className={`p-2 rounded-xl ${isDark ? "bg-violet-950/60" : "bg-violet-50"}`}
         >
-          <Zap size={16} className={isDark ? "text-violet-500" : "text-violet-600"} />
+          <img src="/webhook.svg" alt="Orqestra Logo" className="w-5 h-5" />
         </motion.div>
         <span className={`font-bold text-lg tracking-tight ${isDark ? "text-white" : "text-slate-900"}`}>
           ORQESTRA

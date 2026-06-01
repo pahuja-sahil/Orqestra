@@ -14,7 +14,7 @@ export function LampContainer({ children, className, isDark = true }: LampContai
   return (
     <div
       className={cn(
-        "relative flex min-h-screen flex-col items-center overflow-hidden w-full transition-colors duration-500",
+        "relative flex h-200 flex-col items-center overflow-hidden w-full transition-colors duration-500",
         bg,
         className
       )}

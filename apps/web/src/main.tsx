@@ -1,4 +1,3 @@
-// REPLACE the entire file with this:
 import { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
@@ -26,6 +25,7 @@ function Root() {
         theme={isDark ? "dark" : "light"}
         toastOptions={{
           style: {
+            zIndex: 9999, // Added zIndex to ensure it displays over mobile navbars
             borderRadius: '12px',
             padding: '12px',
             fontSize: '14px',

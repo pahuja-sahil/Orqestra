@@ -1,7 +1,6 @@
 import { motion } from "motion/react"
 import { useNavigate } from "react-router-dom"
 import { useThemeStore } from "@/store/themeStore"
-import { Zap } from "lucide-react"
 
 function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" }) {
   const particles = Array.from({ length: 10 }, (_, i) => i)
@@ -151,7 +150,7 @@ export default function LoginPage() {
                   : "bg-violet-50 border border-violet-100"
               }`}
             >
-              <Zap size={24} className={isDark ? "text-violet-500" : "text-violet-600"} />
+              <img src="/webhook.svg" className="w-7 h-7" alt="Orqestra Logo" />
             </motion.div>
 
             <motion.h1
