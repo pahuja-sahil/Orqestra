@@ -42,3 +42,11 @@
 .theme-root * {
   transition: background 400ms ease, border-color 400ms ease, color 400ms ease, box-shadow 400ms ease;
 }
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  overflow-x: hidden;
+}

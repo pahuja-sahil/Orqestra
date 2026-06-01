@@ -14,12 +14,17 @@ export function LampContainer({ children, className, isDark = true }: LampContai
   return (
     <div
       className={cn(
-        "relative flex min-h-screen flex-col items-center justify-center overflow-hidden w-full transition-colors duration-500",
+        "relative flex min-h-screen flex-col items-center overflow-hidden w-full transition-colors duration-500",
         bg,
         className
       )}
     >
-      <div className="relative flex w-full flex-1 scale-y-125 items-center justify-center isolate">
+      {/* Lamp Visuals Container
+        Shifted to top-[215px]. With the 1.25x scale applied to the -7rem translate, 
+        the horizontal line now lands exactly at ~75px from the top of the screen.
+        This cleanly clears the ~63px Navbar, making the purple line fully visible!
+      */}
+      <div className="absolute top-52.5 flex w-full scale-y-125 items-center justify-center isolate z-0 pointer-events-none">
         <motion.div
           initial={{ opacity: 0.3, width: "10rem" }}
           animate={{ opacity: 1, width: "28rem" }}
@@ -102,7 +107,10 @@ export function LampContainer({ children, className, isDark = true }: LampContai
         />
       </div>
 
-      <div className="relative z-50 flex flex-col items-center px-5 -translate-y-40">
+      {/* Children Container 
+          Added a bit more padding-top so the text clears the newly shifted lamp center 
+      */}
+      <div className="relative z-50 flex flex-col items-center px-5 pt-65 md:pt-70 pb-24 w-full flex-1">
         {children}
       </div>
     </div>

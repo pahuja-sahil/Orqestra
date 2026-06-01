@@ -9,8 +9,8 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen theme-root bg-[var(--bg-page)]">
       <Sidebar />
-      <div className="ml-64 min-h-screen">
-        <header className="sticky top-0 z-30 flex items-center justify-end px-6 py-4 bg-[var(--bg-page)]/80 backdrop-blur-xl">
+      <div className="lg:ml-64 min-h-screen">
+        <header className="sticky top-0 z-30 flex items-center justify-end px-4 sm:px-6 py-4 pl-16 lg:pl-6 theme-transition dark:bg-zinc-950/80 bg-[#FDFBF7]/80 backdrop-blur-xl">
           <button
             onClick={toggle}
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
@@ -19,7 +19,7 @@ export default function DashboardPage() {
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
         </header>
-        <main className="p-6">
+        <main className="p-3 sm:p-4 lg:p-6">
           <Outlet />
         </main>
       </div>

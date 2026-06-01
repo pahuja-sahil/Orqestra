@@ -46,7 +46,7 @@ export default function AgentsPage() {
       className="max-w-4xl mx-auto w-full theme-root"
     >
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2 text-[var(--text-primary)]">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-[var(--text-primary)]">
           Agents
         </h1>
         <p className="text-sm text-[var(--text-muted)]">
@@ -67,7 +67,7 @@ export default function AgentsPage() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.08 }}
-                className={`flex items-center gap-4 p-4 rounded-2xl border bg-[var(--bg-element)]/40 border-[var(--border)] ${
+                className={`flex items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl border bg-[var(--bg-element)]/40 border-[var(--border)] ${
                   isDark ? "hover:border-violet-900/40" : "hover:border-violet-200"
                 }`}
               >
@@ -106,7 +106,7 @@ export default function AgentsPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {[
           { icon: Zap, label: "Avg Response", value: "~45s", sub: "with Groq fallback" },
           { icon: CheckCircle, label: "Quality Threshold", value: "7/10", sub: "min score to pass" },

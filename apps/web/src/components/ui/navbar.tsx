@@ -35,7 +35,7 @@ export function Navbar() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className={`fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-8 py-4 transition-all duration-500 ${
+        className={`fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-4 sm:px-8 py-4 transition-all duration-500 ${
           isDark
             ? "bg-black/20 border-b border-violet-950/30 backdrop-blur-md"
             : "bg-white/20 border-b border-violet-100/50 backdrop-blur-md"
@@ -50,7 +50,7 @@ export function Navbar() {
           </span>
         </div>
 
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden lg:flex items-center gap-8">
           {NAV_ITEMS.map((item) => (
             <motion.a
               key={item}

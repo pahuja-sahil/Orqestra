@@ -431,7 +431,7 @@ export default function IntegrationsPage() {
       >
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 text-[var(--text-primary)]">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-[var(--text-primary)]">
             Integrations
           </h1>
           <p className="text-sm text-[var(--text-muted)]">
@@ -486,7 +486,7 @@ export default function IntegrationsPage() {
                   isDark ? "hover:border-violet-800/60 hover:bg-[#12001a]/80" : "hover:border-violet-300 shadow-sm hover:shadow-md"
                 }`}
               >
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
                   {/* Left: icon + name + meta */}
                   <div className="flex items-start gap-4 min-w-0">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 bg-[var(--bg-element)]">
@@ -519,7 +519,7 @@ export default function IntegrationsPage() {
                   </div>
 
                   {/* Right: status + last checked + failures + delete */}
-                  <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 flex-wrap">
                     <StatusBadge status={integration.status} isDark={isDark} />
 
                     {integration.last_checked && (

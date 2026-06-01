@@ -69,9 +69,9 @@ export default function LogsPage() {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="max-w-4xl mx-auto w-full theme-root"
     >
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold mb-2 text-[var(--text-primary)]">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-[var(--text-primary)] ">
             Logs
           </h1>
           <p className="text-sm text-[var(--text-muted)]">
@@ -89,7 +89,7 @@ export default function LogsPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-4 sm:mb-6 flex-wrap">
         {(["all", "healthy", "broken", "healing"] as const).map((f) => (
           <button
             key={f}

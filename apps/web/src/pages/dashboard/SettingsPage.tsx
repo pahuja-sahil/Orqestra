@@ -160,10 +160,10 @@ export default function SettingsPage() {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="max-w-2xl theme-root"
+      className="max-w-2xl w-full theme-root"
     >
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2 text-(--text-primary)">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-(--text-primary)">
           Settings
         </h1>
         <p className={subClass}>Manage your account and security preferences</p>
@@ -261,7 +261,7 @@ export default function SettingsPage() {
           <h2 className={titleClass}>GitHub</h2>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <p className={`text-sm font-medium mb-1 ${isDark ? "text-slate-300" : "text-slate-700"}`}>
               {githubStatus?.connected
@@ -278,7 +278,7 @@ export default function SettingsPage() {
           </div>
 
           {githubStatus?.connected ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <CheckCircle size={14} className="text-green-500" />
                 <span className={`text-xs font-medium ${isDark ? "text-green-400" : "text-green-600"}`}>
@@ -330,7 +330,7 @@ export default function SettingsPage() {
         <AnimatePresence mode="wait">
           {step === "idle" && (
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
                   <p className={`text-sm font-medium mb-1 ${isDark ? "text-slate-300" : "text-slate-700"}`}>
                     Status:{" "}

@@ -118,10 +118,10 @@ function CodeBlock({ children, className, isDark }: { children: React.ReactNode;
   return isBlock ? (
     <div className="relative my-2 group">
       <button onClick={() => { navigator.clipboard.writeText(codeText); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-        className={`absolute top-2 right-2 text-xs px-2.5 py-1 rounded-lg font-medium opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? "bg-white/10 text-slate-400 hover:text-white hover:bg-white/20 border border-white/10" : "bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200"}`}>
+        className={`absolute top-2 right-2 text-xs px-2.5 py-1 rounded-lg font-medium opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ${isDark ? "bg-white/10 text-slate-400 hover:text-white hover:bg-white/20 border border-white/10" : "bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200"}`}>
         {copied ? "Copied!" : "Copy"}
       </button>
-      <pre className={`p-4 pt-10 rounded-xl text-sm font-mono tracking-tight overflow-x-auto ${isDark ? "bg-[#0b0614] text-slate-300 border border-white/10" : "bg-slate-50 text-slate-800 border border-slate-200"}`}><code>{children}</code></pre>
+      <pre className={`max-w-full p-4 pt-10 rounded-xl text-sm font-mono tracking-tight overflow-x-auto ${isDark ? "bg-[#0b0614] text-slate-300 border border-white/10" : "bg-slate-50 text-slate-800 border border-slate-200"}`}><code>{children}</code></pre>
     </div>
   ) : (
     <code className={`px-1.5 py-0.5 rounded text-[13px] font-mono ${isDark ? "bg-white/10 text-violet-300" : "bg-violet-50 text-violet-700"}`}>{children}</code>
@@ -182,9 +182,9 @@ function PrConfirmButtons({ isDark, onConfirm, onDeny, loading }: {
   isDark: boolean; onConfirm: () => void; onDeny: () => void; loading: boolean
 }) {
   return (
-    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
+    <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-white/10">
       <button onClick={onConfirm} disabled={loading}
-        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${
+        className={`flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${
           loading
             ? (isDark ? "border-violet-900 text-violet-600" : "border-violet-200 text-violet-400")
             : (isDark ? "border-green-800 text-green-400 hover:bg-green-950/40" : "border-green-300 text-green-600 hover:bg-green-50")
@@ -192,7 +192,7 @@ function PrConfirmButtons({ isDark, onConfirm, onDeny, loading }: {
         {loading ? <><Loader2 size={12} className="animate-spin" /> Creating...</> : <><Check size={12} /> Yes, create PR</>}
       </button>
       <button onClick={onDeny} disabled={loading}
-        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${
+        className={`flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${
           isDark ? "border-slate-700 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-500 hover:bg-slate-100"
         }`}>
         <X size={12} /> Not yet
@@ -432,17 +432,17 @@ export default function ConversePage() {
   const cardBg = "bg-[var(--bg-card)]"
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="h-[calc(100vh-7rem)] flex flex-col theme-root">
-      <div className="mb-4 shrink-0">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="min-h-[calc(100dvh-6rem)] xl:h-[calc(100vh-7rem)] xl:min-h-0 flex flex-col theme-root">
+      <div className="mb-3 sm:mb-4 shrink-0">
         <h1 className="text-2xl font-bold text-(--text-primary)">Converse</h1>
         <p className="text-xs text-(--text-muted)">Talk to ORQESTRA — speak or type</p>
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-5 min-h-0">
+      <div className="flex-1 flex flex-col xl:flex-row gap-4 sm:gap-5 min-h-0">
         {/* ─── LEFT PANEL: Input (40%) ─── */}
-        <div className="w-full lg:w-2/5 flex flex-col gap-5 overflow-y-auto pr-1 min-w-0">
+        <div className="w-full xl:w-2/5 flex flex-col gap-4 sm:gap-5 xl:overflow-y-auto xl:pr-1 min-w-0 shrink-0">
           {/* GitHub Status + Repo URL */}
-          <div className={`rounded-2xl border p-5 ${cardBg} ${cardBorder}`}>
+          <div className={`rounded-2xl border p-4 sm:p-5 ${cardBg} ${cardBorder}`}>
             {githubConnected === null ? (
               <div className="flex items-center gap-2">
                 <Loader2 size={14} className="animate-spin text-violet-500" />
@@ -454,25 +454,25 @@ export default function ConversePage() {
                   <CheckCircle2 size={15} className="text-green-500" />
                   <span className={`text-xs font-medium ${isDark ? "text-green-400" : "text-green-600"}`}>GitHub connected</span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     ref={repoInputRef}
                     value={repoUrl}
                     onChange={(e) => { setRepoUrl(e.target.value); setRepoStatus("idle"); setRepoError("") }}
                     onKeyDown={(e) => { if (e.key === "Enter") handleRepoSubmit() }}
                     placeholder="owner/repo or full GitHub URL"
-                    className={`flex-1 px-3 py-2.5 rounded-xl text-xs outline-none border transition-all ${isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-violet-700" : "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-violet-400"} ${repoStatus === "invalid" ? (isDark ? "border-red-500" : "border-red-500") : ""}`} />
+                    className={`w-full min-w-0 flex-1 px-3 py-2.5 rounded-xl text-xs outline-none border transition-all ${isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-violet-700" : "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-violet-400"} ${repoStatus === "invalid" ? (isDark ? "border-red-500" : "border-red-500") : ""}`} />
                   <button onClick={handleRepoSubmit} disabled={repoStatus === "validating" || !repoUrl.trim()}
-                    className={`p-2.5 rounded-xl text-white transition-all ${repoStatus === "validating" ? "bg-violet-700/50 cursor-not-allowed" : "bg-violet-700 hover:bg-violet-600"}`}>
+                    className={`w-full sm:w-auto p-2.5 rounded-xl text-white transition-all flex items-center justify-center ${repoStatus === "validating" ? "bg-violet-700/50 cursor-not-allowed" : "bg-violet-700 hover:bg-violet-600"}`}>
                     {repoStatus === "validating" ? <Loader2 size={15} className="animate-spin" /> : <GitBranch size={15} />}
                   </button>
                 </div>
                 {repoStatus === "valid" && <p className={`text-xs flex items-center gap-1 ${isDark ? "text-green-500" : "text-green-600"}`}><CheckCircle2 size={12} /> Repo connected</p>}
                 {repoError && <p className="text-xs text-red-500">{repoError}</p>}
                 {repoUrl && repoStatus === "valid" && (
-                  <div className="flex items-center gap-1">
-                    <span className={`text-[10px] font-mono ${isDark ? "text-slate-600" : "text-slate-400"}`}>{repoUrl.replace("https://github.com/", "")}</span>
-                    <ExternalLink size={10} className={isDark ? "text-slate-600" : "text-slate-400"} />
+                  <div className="flex items-start gap-1 min-w-0">
+                    <span className={`min-w-0 text-[10px] font-mono break-all ${isDark ? "text-slate-600" : "text-slate-400"}`}>{repoUrl.replace("https://github.com/", "")}</span>
+                    <ExternalLink size={10} className={`mt-0.5 shrink-0 ${isDark ? "text-slate-600" : "text-slate-400"}`} />
                   </div>
                 )}
                 <p className={`text-[10px] leading-relaxed ${isDark ? "text-slate-600" : "text-slate-400"}`}>
@@ -480,7 +480,7 @@ export default function ConversePage() {
                 </p>
               </div>
             ) : (
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <XCircle size={15} className="text-slate-500" />
                   <span className="text-xs text-slate-500">GitHub not connected</span>
@@ -491,7 +491,7 @@ export default function ConversePage() {
           </div>
 
           {/* Voice Recording */}
-          <div className={`rounded-2xl border p-6 flex flex-col items-center gap-4 ${cardBg} ${cardBorder}`}>
+          <div className={`rounded-2xl border p-5 sm:p-6 flex flex-col items-center gap-4 ${cardBg} ${cardBorder}`}>
             <AnimatePresence mode="wait">
               {voiceState === "idle" && (
                 <motion.div key="idle" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }} className="flex flex-col items-center gap-3">
@@ -530,14 +530,14 @@ export default function ConversePage() {
           </div>
 
           {/* Text Input */}
-          <div className={`rounded-2xl border p-4 ${cardBg} ${cardBorder}`}>
-            <div className="flex items-end gap-2">
+          <div className={`rounded-2xl border p-3 sm:p-4 ${cardBg} ${cardBorder}`}>
+            <div className="flex flex-col sm:flex-row sm:items-end gap-2">
               <textarea value={textInput} onChange={(e) => setTextInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleTextSubmit() } }}
                 placeholder="Ask to integrate an API, or paste a repo URL..." rows={3}
-                className={`flex-1 resize-none rounded-xl px-3 py-2.5 text-sm outline-none border transition-all ${isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-violet-700" : "bg-violet-50/40 border-violet-200 text-slate-900 placeholder:text-violet-300 focus:border-violet-400"}`} />
+                className={`w-full min-w-0 flex-1 resize-none rounded-xl px-3 py-2.5 text-sm outline-none border transition-all ${isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-violet-700" : "bg-violet-50/40 border-violet-200 text-slate-900 placeholder:text-violet-300 focus:border-violet-400"}`} />
               <button onClick={() => handleTextSubmit()} disabled={!textInput.trim() || isSubmitting}
-                className={`p-3 rounded-xl shrink-0 transition-all ${!textInput.trim() || isSubmitting ? (isDark ? "bg-slate-800 text-slate-600" : "bg-slate-100 text-slate-400") : (isDark ? "bg-violet-700 text-white hover:bg-violet-600" : "bg-violet-600 text-white hover:bg-violet-500")}`}>
+                className={`w-full sm:w-auto p-3 rounded-xl shrink-0 transition-all flex items-center justify-center ${!textInput.trim() || isSubmitting ? (isDark ? "bg-slate-800 text-slate-600" : "bg-slate-100 text-slate-400") : (isDark ? "bg-violet-700 text-white hover:bg-violet-600" : "bg-violet-600 text-white hover:bg-violet-500")}`}>
                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               </button>
             </div>
@@ -545,21 +545,21 @@ export default function ConversePage() {
         </div>
 
         {/* ─── RIGHT PANEL: Chat (60%) ─── */}
-        <div className={`flex-1 rounded-2xl border flex flex-col min-h-[40vh] lg:min-h-0 overflow-x-hidden ${cardBg} ${cardBorder}`}>
+        <div className={`flex-1 rounded-2xl border flex flex-col min-h-[55dvh] sm:min-h-[60dvh] xl:min-h-0 overflow-x-hidden ${cardBg} ${cardBorder}`}>
           <AnimatePresence mode="wait">
             {messages.length === 0 ? (
               <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex items-center justify-center">
-                <div className="text-center p-8">
+                <div className="text-center p-6 sm:p-8">
                   <MessageSquare size={32} className={`mx-auto mb-3 ${isDark ? "text-violet-900" : "text-violet-200"}`} />
                   <p className={`text-sm font-medium mb-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>Start a conversation</p>
                   <p className={`text-xs ${isDark ? "text-slate-600" : "text-slate-400"}`}>Ask ORQESTRA to integrate an API in your project</p>
                 </div>
               </motion.div>
             ) : (
-              <motion.div key="messages" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3">
+              <motion.div key="messages" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-3">
                 {messages.map((msg) => (
                   <motion.div key={msg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                    className={`p-3 rounded-xl ${msg.type === "user"
+                    className={`p-3 rounded-xl min-w-0 ${msg.type === "user"
                       ? (isDark ? "bg-white/5 border border-white/10" : "bg-violet-50 border border-violet-200")
                       : (isDark ? "bg-violet-950/30 border border-violet-900/40" : "bg-linear-to-br from-violet-50 to-white border border-violet-200")}`}>
                     <div className="flex items-center gap-2 mb-1.5">
@@ -577,7 +577,7 @@ export default function ConversePage() {
                       <ThinkingBubble isDark={isDark} />
                     ) : (
                       <>
-                        <div className="wrap-break-word min-w-0"><TypewriterText content={msg.content} isDark={isDark} isCompleted={msg.isCompleted} /></div>
+                        <div className="wrap-break-word min-w-0 overflow-x-hidden"><TypewriterText content={msg.content} isDark={isDark} isCompleted={msg.isCompleted} /></div>
                         {msg.awaitingPrConfirm && !msg.isPrResult && (
                           <PrConfirmButtons
                             isDark={isDark}
@@ -592,7 +592,7 @@ export default function ConversePage() {
                         {githubConnected && repoUrl && !msg.awaitingPrConfirm && !msg.isPrResult && msg.content.includes("```") && (
                           <div className="mt-2 pt-2 border-t border-white/10">
                             <button onClick={() => executeCreatePR(msg.id, msg.content, msg.apiName)} disabled={prLoadingId === msg.id}
-                              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${prLoadingId === msg.id
+                              className={`flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${prLoadingId === msg.id
                                 ? (isDark ? "border-violet-900 text-violet-600" : "border-violet-200 text-violet-400")
                                 : (isDark ? "border-violet-800 text-violet-400 hover:bg-violet-950/40" : "border-violet-300 text-violet-600 hover:bg-violet-50")}`}>
                               {prLoadingId === msg.id ? <><Loader2 size={12} className="animate-spin" /> Creating PR...</> : <><GitBranch size={12} /> Create PR in repo</>}

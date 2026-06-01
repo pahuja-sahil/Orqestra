@@ -66,7 +66,7 @@ export default function TwoFactorPage() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className={`relative w-full max-w-md mx-4 p-8 rounded-3xl border backdrop-blur-sm ${
+        className={`relative w-full max-w-md mx-4 p-5 sm:p-8 rounded-3xl border backdrop-blur-sm ${
           isDark
             ? "border-violet-800/50 bg-zinc-950/90 shadow-2xl shadow-violet-950/40"
             : "border-violet-200/80 bg-white/95 shadow-2xl shadow-violet-100/60"

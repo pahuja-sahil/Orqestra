@@ -14,7 +14,7 @@ function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" })
         style={{
           background: isDark
             ? side === "left"
-              ? "linear-gradient(to right, rgba(124,58,237,0.35), rgba(109,40,217,0.12), transparent)"
+              ? "linear-gradient(to right, rgba(14, 9, 22, 0.35), rgba(109,40,217,0.12), transparent)"
               : "linear-gradient(to left, rgba(124,58,237,0.35), rgba(109,40,217,0.12), transparent)"
             : side === "left"
               ? "linear-gradient(to right, rgba(139,92,246,0.15), rgba(139,92,246,0.05), transparent)"
@@ -113,7 +113,7 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className={`relative z-20 w-full max-w-md mx-4 p-8 rounded-3xl border backdrop-blur-sm ${
+        className={`relative z-20 w-full max-w-md mx-4 p-5 sm:p-8 rounded-3xl border backdrop-blur-sm ${
           isDark
             ? "border-violet-800/50 bg-zinc-950/90 shadow-2xl shadow-violet-950/50"
             : "border-violet-200/80 bg-white/90 shadow-2xl shadow-violet-100/80"
