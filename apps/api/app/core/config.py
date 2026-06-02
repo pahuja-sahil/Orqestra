@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     BACKEND_URL: str = "http://localhost"
     FRONTEND_URL: str = "http://localhost"
+    VITE_API_URL: str = "http://localhost/api"
     JINA_API_KEY: str = ""
 
     @field_validator("SECRET_KEY")
