@@ -1,5 +1,5 @@
 # web.Dockerfile
-# This builds our Next.js frontend image
+# This builds our Vite React frontend image
 
 # ============================================
 # STAGE 1: BASE
@@ -29,7 +29,7 @@ RUN npm install
 
 # ============================================
 # STAGE 3: DEVELOPMENT
-# Hot reload enabled via Next.js dev server
+# Hot reload enabled via Vite dev server
 # ============================================
 FROM dependencies AS development
 
@@ -41,7 +41,7 @@ CMD ["npm", "run", "dev"]
 
 # ============================================
 # STAGE 4: PRODUCTION
-# Optimized for production deployment
+# Optimized production build (static files in dist/)
 # ============================================
 FROM dependencies AS production
 
@@ -52,4 +52,4 @@ RUN npm run build
 EXPOSE 3000
 
 ENV NODE_ENV=production
-CMD ["npm", "start"]
+CMD ["npx", "vite", "preview", "--host", "0.0.0.0", "--port", "3000"]

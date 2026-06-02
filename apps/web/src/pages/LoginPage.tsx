@@ -80,8 +80,9 @@ export default function LoginPage() {
   const { isDark } = useThemeStore()
 
   const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:8000/api/auth/google"
-  }
+    const apiBase = (import.meta as any).env?.VITE_API_URL || "http://localhost:8000";
+    window.location.href = `${apiBase}/api/auth/google`;
+  };
 
   return (
     <div className={`min-h-screen flex items-center justify-center transition-colors duration-500 relative overflow-hidden ${isDark ? "bg-zinc-950" : "bg-zinc-50"}`}>

@@ -77,9 +77,6 @@ class Settings(BaseSettings):
     # ----------------------------------------
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
-    NEXTAUTH_SECRET: str
-    NEXTAUTH_URL: str = "http://localhost:3000"
-    NEXT_PUBLIC_API_URL: str = "http://localhost/api"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     GITHUB_CLIENT_ID: str = ""
