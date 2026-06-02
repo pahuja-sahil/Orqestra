@@ -5,6 +5,7 @@ Runs every 5 minutes to check integration health
 
 import asyncio
 import hashlib
+import re
 from datetime import datetime, timezone
 import httpx
 from sqlalchemy import select
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
 from app.core.logger import logger
+from app.core.task_utils import safe_create_task
 from app.models.integration import Integration
 from app.models.user import User
 from app.services.notification_service import send_integration_broken
@@ -100,7 +102,8 @@ async def extract_api_endpoints(docs_content: str, api_name: str) -> set:
 
 
 async def check_docs_drift(integration: Integration) -> tuple[bool, str, str]:
-    """Check if API docs have changed and detect breaking changes"""
+    """Check if API docs have changed and detect breaking changes.
+    Uses HTTP ETag / If-None-Match to avoid re-downloading unchanged docs (Issue #30)."""
     api_name = integration.api_name.lower().strip()
     
     docs_url = integration.docs_url or next(
@@ -125,11 +128,27 @@ async def check_docs_drift(integration: Integration) -> tuple[bool, str, str]:
         return False, "", integration.docs_hash or ""
     
     try:
+        headers = {}
+        stored_etag = getattr(integration, "_etag_cache", None)
+        if stored_etag:
+            headers["If-None-Match"] = stored_etag
+
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-            response = await client.get(docs_url)
+            response = await client.get(docs_url, headers=headers)
+            
+            # 304 Not Modified — docs unchanged, skip download
+            if response.status_code == 304:
+                logger.info("docs_unchanged_304", api=api_name)
+                return False, "", integration.docs_hash or ""
+            
             if response.status_code != 200:
                 logger.warning("docs_check_http_error", api=api_name, status=response.status_code)
                 return False, "", integration.docs_hash or ""
+            
+            # Cache ETag for next cycle
+            etag = response.headers.get("etag")
+            if etag:
+                integration._etag_cache = etag
             
             content = response.text[:200_000]
             new_hash = hashlib.sha256(content.encode()).hexdigest()
@@ -201,7 +220,13 @@ async def check_code_health(integration: Integration, db: AsyncSession) -> tuple
             except SyntaxError as e:
                 logger.warning("code_health_syntax_error", name=integration.name, error=str(e))
                 return False, f"SyntaxError: {str(e)}"
-            
+
+            # Issue #20: In production, only syntax-check — never exec untrusted code
+            from app.core.config import settings
+            if settings.ENVIRONMENT != "development":
+                logger.info("code_health_syntax_only_production", name=integration.name)
+                return True, "Syntax OK (runtime check disabled in production)"
+
             try:
                 import ast
                 import io
@@ -254,6 +279,34 @@ async def check_code_health(integration: Integration, db: AsyncSession) -> tuple
 
 
 
+async def check_pr_merged(integration: Integration, db: AsyncSession) -> bool:
+    """Check GitHub API directly to see if the PR was merged."""
+    if not integration.pr_url:
+        logger.info("pr_merge_check_no_pr_url", name=integration.name)
+        return False
+    try:
+        from app.services.github_service import get_github_client
+        import re
+        match = re.search(r"/pull/(\d+)", integration.pr_url)
+        if not match:
+            logger.warning("pr_merge_check_cannot_parse_pr_number", name=integration.name, pr_url=integration.pr_url)
+            return False
+        pr_number = int(match.group(1))
+        repo_parts = integration.repo_url.replace("https://github.com/", "").split("/")
+        if len(repo_parts) < 2:
+            return False
+        owner, repo = repo_parts[0], repo_parts[1]
+        github_client, _ = await get_github_client(str(integration.user_id), db)
+        repo_obj = github_client.get_repo(f"{owner}/{repo}")
+        pr = repo_obj.get_pull(pr_number)
+        merged = pr.merged or pr.state == "closed"
+        logger.info("pr_merge_check_result", name=integration.name, pr=pr_number, merged=merged, state=pr.state)
+        return merged
+    except Exception as e:
+        logger.error("pr_merge_check_failed", name=integration.name, error=str(e))
+        raise
+
+
 async def check_single_integration(integration: Integration, db: AsyncSession):
     """Check a single integration and trigger repair if needed"""
     from workers.repair import repair_integration_direct, MAX_REPAIR_ATTEMPTS
@@ -262,15 +315,25 @@ async def check_single_integration(integration: Integration, db: AsyncSession):
     
     logger.info("checking_integration", name=integration.name, status=integration.status, failure_count=integration.failure_count, repo_url=integration.repo_url)
 
-    # ── PR pending: check if PR was merged (code on main branch fixed) ──
+    # ── PR pending: check if PR was actually merged via GitHub API ──
     if integration.status == "pr_pending":
-        code_ok, code_msg = await check_code_health(integration, db)
-        if code_ok:
-            integration.status = "healthy"
-            integration.failure_count = 0
-            logger.info("pr_merged_integration_healthy", name=integration.name)
-        else:
-            logger.info("pr_not_merged_yet", name=integration.name, msg=code_msg)
+        try:
+            pr_merged = await check_pr_merged(integration, db)
+            if pr_merged:
+                integration.status = "healthy"
+                integration.failure_count = 0
+                logger.info("pr_merged_integration_healthy", name=integration.name)
+            else:
+                logger.info("pr_not_merged_yet", name=integration.name)
+        except Exception as e:
+            logger.warning("pr_merge_check_failed_falling_back_to_code_health", name=integration.name, error=str(e))
+            code_ok, code_msg = await check_code_health(integration, db)
+            if code_ok:
+                integration.status = "healthy"
+                integration.failure_count = 0
+                logger.info("pr_merged_integration_healthy_fallback", name=integration.name)
+            else:
+                logger.info("pr_not_merged_yet_fallback", name=integration.name, msg=code_msg)
         return
 
     if integration.status == "healing":
@@ -336,7 +399,9 @@ async def check_single_integration(integration: Integration, db: AsyncSession):
             errors=error_msg
         )
         
-        should_repair = integration.failure_count >= 2
+        # Code-level errors (syntax errors, runtime errors) heal immediately — they won't self-resolve
+        has_code_error = any(d.startswith("Code:") for d in error_details)
+        should_repair = integration.failure_count >= 2 or has_code_error
         
         if should_repair:
             integration.status = "healing"
@@ -355,9 +420,9 @@ async def check_single_integration(integration: Integration, db: AsyncSession):
                         api_name=integration.api_name
                     )
                 except Exception as e:
-                    logger.warning("notification_failed", error=str(e))
-            
-            asyncio.create_task(repair_integration_direct(str(integration.id)))
+                    logger.error("notification_failed", error=str(e))
+
+            safe_create_task(repair_integration_direct(str(integration.id)), name=f"repair_{integration.id}")
             logger.warning("repair_triggered", name=integration.name, failures=integration.failure_count)
     else:
         if integration.status != "healthy":

@@ -32,10 +32,10 @@ def set_refresh_token_cookie(response: Response, token: str):
         key="refresh_token",
         value=token,
         httponly=True,
-        secure=settings.ENVIRONMENT == "production",
+        secure=settings.ENVIRONMENT == "production" or settings.BEHIND_PROXY,
         samesite="lax",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-        path="/api/auth"
+        path="/api"
     )
 
 
@@ -47,6 +47,7 @@ async def google_login():
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
+        "prompt": "select_account",
     }
     logger.info("google_login_initiated", redirect_uri=params["redirect_uri"])
     query = "&".join(f"{k}={v}" for k, v in params.items())
@@ -200,7 +201,7 @@ async def refresh_token(
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie(key="refresh_token", path="/api/auth")
+    response.delete_cookie(key="refresh_token", path="/api")
     return {"message": "Logged out successfully"}
 
 
@@ -223,12 +224,14 @@ async def setup_2fa(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Regenerate: always create a new secret (invalidates any old one)
     secret = generate_totp_secret()
     user.totp_secret = secret
+    user.is_2fa_enabled = False  # Must confirm new secret before enabling
     await db.commit()
 
     qr_code = generate_qr_code(secret, user.email)
-    return {"qr_code": qr_code, "secret": secret}
+    return {"qr_code": qr_code, "secret": secret, "note": "Old 2FA secret has been invalidated. Please confirm the new code to re-enable 2FA."}
 
 @router.get("/me")
 async def get_me(

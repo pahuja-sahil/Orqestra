@@ -76,10 +76,12 @@ def register_code_runner(mcp: FastMCP):
         timeout_seconds: int = 10
     ) -> dict:
         """
-        Runs Python code in a restricted sandbox.
-        Only safe code passes the static analysis check.
-        Captures stdout and stderr.
+        Validates Python code for syntax and safety.
+        In production: AST-only analysis — no code execution.
+        In development: runs code in a restricted sandbox for testing.
         """
+        from app.core.config import settings
+
         is_safe, reason = is_code_safe(code)
 
         if not is_safe:
@@ -88,6 +90,24 @@ def register_code_runner(mcp: FastMCP):
                 "success": False,
                 "output": "",
                 "error": f"Code blocked: {reason}"
+            }
+
+        try:
+            ast.parse(code)
+        except SyntaxError as e:
+            return {
+                "success": False,
+                "output": "",
+                "error": f"Syntax error: {e}"
+            }
+
+        # Production: AST-only validation — never exec untrusted code
+        if settings.ENVIRONMENT != "development":
+            logger.info("sandbox_ast_only", code_len=len(code))
+            return {
+                "success": True,
+                "output": "[Execution disabled in production — AST validation passed]",
+                "error": None
             }
 
         old_stdout = sys.stdout

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
 import { useThemeStore } from "@/store/themeStore"
@@ -29,6 +29,8 @@ export default function SettingsPage() {
     avatar_url?: string
   } | null>(null)
 
+  const githubToastShown = useRef(false)
+
   useEffect(() => {
     const checkGithub = async () => {
       try {
@@ -42,12 +44,11 @@ export default function SettingsPage() {
     }
     checkGithub()
 
-    // Check if just connected via callback redirect
     const params = new URLSearchParams(window.location.search)
-    if (params.get("github") === "connected") {
-      checkGithub()
+    if (params.get("github") === "connected" && !githubToastShown.current) {
       window.history.replaceState({}, "", "/dashboard/settings")
       toast.success("GitHub connected successfully")
+      githubToastShown.current = true
     }
   }, [accessToken])
 

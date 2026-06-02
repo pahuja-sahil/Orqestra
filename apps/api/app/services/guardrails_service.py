@@ -1,5 +1,6 @@
 import re
 import json
+import ast
 from app.core.logger import logger
 
 
@@ -27,8 +28,56 @@ class IntegrationOutputValidator:
         r"exec\(",
     ]
 
+    FORBIDDEN_IMPORTS = [
+        "subprocess", "shutil",
+        "socket", "ctypes", "multiprocessing", "threading",
+    ]
+
+    FORBIDDEN_BUILTINS = [
+        "exec", "eval", "__import__", "compile",
+        "globals", "locals", "open",
+    ]
+
     MIN_CODE_LENGTH = 50
     MAX_RESPONSE_LENGTH = 15000
+
+    def _ast_scan(self, code: str, issues: list, api_name: str):
+        """AST-level analysis — catches obfuscated dangerous calls that regex misses."""
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name in self.FORBIDDEN_IMPORTS:
+                        msg = f"Dangerous import detected (AST): {alias.name}"
+                        issues.append(msg)
+                        logger.warning("guardrails_ast_import", module=alias.name, api=api_name)
+
+            if isinstance(node, ast.ImportFrom):
+                if node.module in self.FORBIDDEN_IMPORTS:
+                    msg = f"Dangerous import detected (AST): {node.module}"
+                    issues.append(msg)
+                    logger.warning("guardrails_ast_import", module=node.module, api=api_name)
+
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name):
+                    if node.func.id in self.FORBIDDEN_BUILTINS:
+                        msg = f"Dangerous call detected (AST): {node.func.id}"
+                        issues.append(msg)
+                        logger.warning("guardrails_ast_call", call=node.func.id, api=api_name)
+                if isinstance(node.func, ast.Attribute):
+                    if isinstance(node.func.value, ast.Attribute) and \
+                       isinstance(node.func.value.value, ast.Attribute):
+                        # obj.__class__.__bases__ bypass pattern
+                        if "__class__" in str(node.func.value.value.attr) or \
+                           "__bases__" in str(node.func.value.attr) or \
+                           "__subclasses__" in str(node.func.attr):
+                            msg = "Dangerous introspection pattern detected (AST)"
+                            issues.append(msg)
+                            logger.warning("guardrails_ast_introspection", api=api_name)
 
     def validate(self, response: str, api_name: str = "") -> dict:
         """
@@ -55,6 +104,11 @@ class IntegrationOutputValidator:
                 issues.append(f"Dangerous pattern detected: {pattern}")
                 logger.warning("guardrails_dangerous_pattern",
                                pattern=pattern, api=api_name)
+
+        # AST-level analysis on code blocks
+        code_blocks = re.findall(r"```(?:\w+)?\n(.*?)```", response, re.DOTALL)
+        for block in code_blocks:
+            self._ast_scan(block, issues, api_name)
 
         has_code = "```" in response
         if not has_code:

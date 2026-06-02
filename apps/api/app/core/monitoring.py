@@ -3,6 +3,7 @@ from app.core.config import settings
 from app.core.logger import logger
 
 langfuse_client = None
+_langfuse_failure_count = 0
 
 
 def get_langfuse():
@@ -39,6 +40,7 @@ def track_llm_call(
     """
     Tracks a single LLM call in Langfuse.
     """
+    global _langfuse_failure_count
     try:
         lf = get_langfuse()
         if not lf:
@@ -54,7 +56,12 @@ def track_llm_call(
         lf.flush()
 
     except Exception as e:
-        logger.warning("langfuse_tracking_failed", error=str(e))
+        _langfuse_failure_count += 1
+        logger.warning(
+            "langfuse_tracking_failed",
+            error=str(e),
+            total_failures=_langfuse_failure_count,
+        )
 
 
 def track_agent_run(
@@ -68,6 +75,7 @@ def track_agent_run(
     """
     Tracks a full agent pipeline run in Langfuse.
     """
+    global _langfuse_failure_count
     try:
         lf = get_langfuse()
         if not lf:
@@ -88,5 +96,10 @@ def track_agent_run(
         return None
 
     except Exception as e:
-        logger.warning("langfuse_agent_tracking_failed", error=str(e))
+        _langfuse_failure_count += 1
+        logger.warning(
+            "langfuse_agent_tracking_failed",
+            error=str(e),
+            total_failures=_langfuse_failure_count,
+        )
         return None

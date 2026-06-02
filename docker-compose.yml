@@ -43,6 +43,11 @@ services:
       retries: 5
       # Other services wait for postgres to be READY
       # not just started — there's a difference
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
 
   # ------------------------------------------
   # REDIS — message queue + cache
@@ -67,6 +72,11 @@ services:
     command: redis-server --appendonly yes
     # appendonly yes = write every operation to disk
     # Without this: Redis loses all data on restart
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
   # ------------------------------------------
   # API — FastAPI backend
@@ -100,6 +110,11 @@ services:
       # This prevents "connection refused" errors on startup
     networks:
       - orqestra_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
 
   # ------------------------------------------
   # WEB — Next.js frontend
@@ -129,6 +144,11 @@ services:
       - api
     networks:
       - orqestra_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   # ------------------------------------------
   # WORKER — background self-healing brain
@@ -156,6 +176,11 @@ services:
         condition: service_healthy
     networks:
       - orqestra_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
 
   # ------------------------------------------
   # NGINX — reverse proxy
@@ -177,6 +202,11 @@ services:
       - web
     networks:
       - orqestra_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
 
 # ============================================
 # VOLUMES — persistent data storage

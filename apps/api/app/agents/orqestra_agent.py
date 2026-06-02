@@ -11,7 +11,7 @@ from app.core.logger import logger
 
 
 async def format_node(state: OrqestraState) -> OrqestraState:
-    response = state.get("generated_code", "")
+    response = state.get("final_response", "") or state.get("generated_code", "")
     if not response:
         response = "I was unable to generate a response. Please try again."
     state["final_response"] = response

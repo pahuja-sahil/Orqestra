@@ -46,10 +46,13 @@ export default function LogsPage() {
   }
 
   useEffect(() => {
-    fetchLogs()
+    const poll = async () => {
+      await fetchLogs()
+    }
+    poll()
     const interval = setInterval(fetchLogs, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [accessToken])
 
   const filtered = filter === "all"
     ? logs

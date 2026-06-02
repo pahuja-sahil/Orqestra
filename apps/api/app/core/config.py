@@ -13,6 +13,7 @@
 # ============================================
 
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from typing import Optional
 
 
@@ -26,6 +27,32 @@ class Settings(BaseSettings):
     BACKEND_URL: str = "http://localhost"
     FRONTEND_URL: str = "http://localhost"
     JINA_API_KEY: str = ""
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def secret_key_min_length(cls, v: str) -> str:
+        if len(v) < 32:
+            raise ValueError(
+                f"SECRET_KEY must be at least 32 characters (got {len(v)})"
+            )
+        return v
+
+    # Comma-separated list of allowed CORS origins
+    ALLOWED_ORIGINS: str = ""
+
+    # Behind proxy flag enables Secure cookie flag
+    BEHIND_PROXY: bool = False
+
+    # Encryption key for sensitive fields (e.g. GitHub tokens)
+    # If empty, derived from SECRET_KEY
+    ENCRYPTION_KEY: str = ""
+
+    # ChromaDB connection mode: "persistent" (local) or "http" (server)
+    CHROMA_MODE: str = "persistent"
+    # ChromaDB HTTP host (only used when CHROMA_MODE=http)
+    CHROMA_HOST: str = "localhost"
+    CHROMA_PORT: int = 8000
+
     # No default = REQUIRED
     # Missing = app won't start
 
@@ -41,6 +68,9 @@ class Settings(BaseSettings):
     # REDIS
     # ----------------------------------------
     REDIS_URL: str = "redis://localhost:6379"
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_GENERAL: str = "60/minute"
+    RATE_LIMIT_AUTH: str = "5/minute"
 
     # ----------------------------------------
     # AUTH

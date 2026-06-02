@@ -2,8 +2,10 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
 
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000'
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: API_BASE_URL,
   withCredentials: true,
 })
 

@@ -267,7 +267,7 @@ export default function ConversePage() {
       if (!rawCode) { setPrLoadingId(null); return }
       const prRes = await api.post("/api/github/create-pr", {
         repo_path: repoPath,
-        api_name: repoPath.split("/")[1] || "repo",
+        api_name: apiName || repoPath.split("/")[1] || "repo",
         real_api_name: apiName || repoPath.split("/")[1] || "repo",
         target_file: targetFile,
         generated_code: rawCode,
@@ -277,7 +277,7 @@ export default function ConversePage() {
       markPrDone(msgId)
       setAwaitingPrConfirm(msgId, false)
       addMessage({ type: "orqestra", content: `✅ PR created successfully! [View PR on GitHub](${prRes.data.pr_url})`, inputMode: "text", isPrResult: true })
-      toast.success(`Pull request created for ${apiName || repoPath.split("/")[1] || "repo"}`)
+      toast.success(`${apiName || repoPath.split("/")[1] || "repo"} integration created`)
     } catch (err: unknown) {
       markPrDone(msgId)
       setAwaitingPrConfirm(msgId, false)
@@ -496,11 +496,11 @@ export default function ConversePage() {
               {voiceState === "idle" && (
                 <motion.div key="idle" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }} className="flex flex-col items-center gap-3">
                   <motion.div animate={{ boxShadow: [`0 0 0 0 ${isDark ? "rgba(139,92,246,0.35)" : "rgba(139,92,246,0.25)"}`, `0 0 0 18px rgba(139,92,246,0)`] }} transition={{ duration: 2, repeat: Infinity }} className="rounded-full">
-                    <button onClick={handleMicClick} disabled={!isSupported}
-                      className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all ${isDark ? "border-violet-800 bg-violet-950/60 text-violet-400 hover:bg-violet-900/60" : "border-violet-400 bg-violet-50 text-violet-600 hover:bg-violet-100"}`}>
+                    <button onClick={handleMicClick}
+                      className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all ${isDark ? "border-violet-800 bg-violet-950/60 text-violet-400 hover:bg-violet-900/60" : "border-violet-400 bg-violet-50 text-violet-600 hover:bg-violet-100"} ${!isSupported ? "opacity-40 cursor-not-allowed" : ""}`}>
                       <Mic size={24} /></button>
                   </motion.div>
-                  <p className={`text-xs font-medium ${isDark ? "text-slate-500" : "text-violet-500"}`}>{isSupported ? "Tap to speak" : "Not supported"}</p>
+                  <p className={`text-xs font-medium ${isDark ? "text-slate-500" : "text-violet-500"}`}>{isSupported ? "Tap to speak" : "Unavailable (HTTPS/mic required)"}</p>
                 </motion.div>
               )}
               {isRecording && (
@@ -526,7 +526,12 @@ export default function ConversePage() {
                 </motion.div>
               )}
             </AnimatePresence>
-            {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+            {error && (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-xs text-red-500 text-center">{error}</p>
+                <button onClick={() => reset()} className="text-xs text-violet-500 underline underline-offset-2 hover:text-violet-400">Try again</button>
+              </div>
+            )}
           </div>
 
           {/* Text Input */}

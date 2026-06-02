@@ -31,7 +31,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   logout: () => {
     useConverseStore.getState().clearMessages()
-    localStorage.removeItem('orqestra-converse')
+    sessionStorage.removeItem('orqestra-converse')
     set({ accessToken: null, user: null, isAuthenticated: false })
   },
 }))

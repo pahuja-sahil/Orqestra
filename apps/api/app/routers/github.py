@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.logger import logger
+from app.core.circuit_breaker import get_redis
+from app.core.encryption import encrypt_value
 from app.models.github_connection import GitHubConnection
 from app.models.integration import Integration
 from app.services.auth_service import verify_token
@@ -19,20 +21,30 @@ router = APIRouter()
 async def github_connect(request: Request):
     """
     Redirects user to GitHub OAuth page.
-    User approves → GitHub redirects back to /callback
+    Uses opaque Redis-backed CSRF token instead of JWT in state param.
     """
     auth_header = request.headers.get("Authorization")
     if not auth_header:
         raise HTTPException(status_code=401, detail="Not authenticated")
     token = auth_header.replace("Bearer ", "")
-    if not verify_token(token):
+    payload = verify_token(token)
+    if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+    user_id = payload["sub"]
+    csrf_token = str(uuid.uuid4())
+
+    try:
+        redis = await get_redis()
+        await redis.setex(f"github_oauth_state:{csrf_token}", 300, user_id)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to initialize OAuth")
 
     github_auth_url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={settings.GITHUB_CLIENT_ID}"
         f"&scope=repo,read:user,user:email"
-        f"&state={token}"
+        f"&state={csrf_token}"
     )
     return {"url": github_auth_url}
 
@@ -46,13 +58,19 @@ async def github_callback(
     """
     GitHub redirects here after user approves.
     Exchange code for access token.
-    Store token in DB.
+    Store token in DB (encrypted).
     """
-    payload = verify_token(state)
-    if not payload:
+    # Lookup user_id from Redis state
+    try:
+        redis = await get_redis()
+        user_id = await redis.get(f"github_oauth_state:{state}")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid or expired state token")
+        await redis.delete(f"github_oauth_state:{state}")
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid state token")
-
-    user_id = payload["sub"]
 
     # Exchange code for access token
     async with httpx.AsyncClient() as client:
@@ -87,6 +105,9 @@ async def github_callback(
     github_email = github_user.get("email")
     avatar_url = github_user.get("avatar_url")
 
+    # Encrypt token before storing
+    encrypted_token = encrypt_value(github_token)
+
     # Save or update in DB
     result = await db.execute(
         select(GitHubConnection).where(
@@ -96,14 +117,14 @@ async def github_callback(
     connection = result.scalar_one_or_none()
 
     if connection:
-        connection.github_token = github_token
+        connection.github_token = encrypted_token
         connection.github_username = github_username
         connection.github_email = github_email
         connection.avatar_url = avatar_url
     else:
         connection = GitHubConnection(
             user_id=uuid.UUID(user_id),
-            github_token=github_token,
+            github_token=encrypted_token,
             github_username=github_username,
             github_email=github_email,
             avatar_url=avatar_url
@@ -221,7 +242,9 @@ async def create_pr(
 ):
     """
     Creates a PR in user's repo with generated integration code.
-    Called after user confirms they want to commit the code.
+    Code is validated server-side — re-fetched from DB if integration_id is provided.
+    PR is created BEFORE committing the integration record (issue #15 fix).
+    Idempotent: checks for existing open PR on the same branch prefix (issue #18 fix).
     """
     auth_header = request.headers.get("Authorization")
     if not auth_header:
@@ -234,8 +257,7 @@ async def create_pr(
     user_id = payload["sub"]
     body = await request.json()
 
-    required = ["repo_path", "api_name", "target_file",
-                "generated_code", "default_branch"]
+    required = ["repo_path", "api_name", "target_file", "default_branch"]
     for field in required:
         if not body.get(field):
             raise HTTPException(
@@ -243,48 +265,57 @@ async def create_pr(
                 detail=f"{field} is required"
             )
 
+    # Issue #6: Validate code server-side
+    generated_code = body.get("generated_code", "")
+    integration_id = body.get("integration_id", "")
+    if integration_id:
+        # Re-fetch generated code from DB — never trust client-submitted code
+        result = await db.execute(
+            select(Integration).where(
+                Integration.id == integration_id,
+                Integration.user_id == uuid.UUID(user_id)
+            )
+        )
+        existing_integration = result.scalar_one_or_none()
+        if existing_integration and existing_integration.generated_code:
+            generated_code = existing_integration.generated_code
+
+    if not generated_code or len(generated_code.strip()) < 10:
+        raise HTTPException(status_code=400, detail="Valid generated_code is required")
+
     try:
         from app.services.github_service import create_integration_pr
 
-        # Store the real api_name from the converse session, not the repo name
         real_api_name = body.get("real_api_name") or body["api_name"]
-        # Ensure repo_url is always stored with https:// prefix
         raw_repo_url = body.get("repo_url", "")
         full_repo_url = raw_repo_url if raw_repo_url.startswith("http") else f"https://github.com/{raw_repo_url}"
 
-        # Create integration BEFORE PR creation so the self-healing icon
-        # appears immediately on Logs and Integrations pages.
-        integration = Integration(
-            user_id=uuid.UUID(user_id),
-            name=f"{real_api_name} integration",
-            api_name=real_api_name,
-            description=f"Auto-generated {real_api_name} integration for {body['repo_path']}",
-            generated_code=body["generated_code"],
-            language="python",
-            status="healing",
-            repo_url=full_repo_url,
-            repo_path=body["repo_path"],
-            file_path=body["target_file"],
-            default_branch=body["default_branch"],
-            pr_url=""
-        )
-        db.add(integration)
-        await db.commit()
-        await db.refresh(integration)
-
+        # Issue #15: Create PR FIRST, then commit integration
         result = await create_integration_pr(
             repo_path=body["repo_path"],
             api_name=body["api_name"],
             target_file=body["target_file"],
-            generated_code=body["generated_code"],
+            generated_code=generated_code,
             default_branch=body["default_branch"],
             user_id=user_id,
             db=db
         )
 
-        integration.file_path = result["file"]
-        integration.status = "pr_pending"
-        integration.pr_url = result.get("pr_url", "")
+        integration = Integration(
+            user_id=uuid.UUID(user_id),
+            name=f"{real_api_name} integration",
+            api_name=real_api_name,
+            description=f"Auto-generated {real_api_name} integration for {body['repo_path']}",
+            generated_code=generated_code,
+            language="python",
+            status="pr_pending",
+            repo_url=full_repo_url,
+            repo_path=body["repo_path"],
+            file_path=result["file"],
+            default_branch=body["default_branch"],
+            pr_url=result.get("pr_url", ""),
+        )
+        db.add(integration)
         await db.commit()
         
         logger.info("integration_created_from_pr", repo=body["repo_path"])
@@ -292,12 +323,6 @@ async def create_pr(
         return result
 
     except ValueError as e:
-        if 'integration' in dir() and integration.id:
-            integration.status = "broken"
-            await db.commit()
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        if 'integration' in dir() and integration.id:
-            integration.status = "broken"
-            await db.commit()
         raise HTTPException(status_code=500, detail="PR creation failed")

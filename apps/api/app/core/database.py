@@ -132,3 +132,16 @@ async def check_database_connection() -> bool:
     except Exception as e:
         logger.error("database_connection_failed", error=str(e))
         return False
+
+
+async def check_database_health() -> dict:
+    """Lightweight health check — returns status and latency."""
+    import time
+    try:
+        start = time.monotonic()
+        async with AsyncSessionLocal() as session:
+            await session.execute(__import__('sqlalchemy').text("SELECT 1"))
+            latency = round((time.monotonic() - start) * 1000, 1)
+            return {"status": "healthy", "latency_ms": latency}
+    except Exception as e:
+        return {"status": "degraded", "error": str(e)}

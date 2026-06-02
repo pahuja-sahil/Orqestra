@@ -39,9 +39,20 @@ export function useVoiceRecording(
     !!navigator.mediaDevices &&
     !!window.MediaRecorder
 
+const getWsUrl = useCallback(() => {
+  const apiBase = (import.meta as any).env?.VITE_API_URL || "http://localhost:8000"
+  return apiBase.replace(/^http/, "ws") + "/api/converse/ws"
+}, [])
+
 const connectWebSocket = useCallback((): Promise<void> => {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket("ws://localhost:8000/api/converse/ws")
+    if (!accessToken) {
+      reject(new Error("Not authenticated"))
+      return
+    }
+
+    let resolved = false
+    const ws = new WebSocket(getWsUrl())
     wsRef.current = ws
 
     // Keepalive ping every 15 seconds
@@ -63,6 +74,7 @@ const connectWebSocket = useCallback((): Promise<void> => {
 
       switch (data.type) {
         case "auth_ok":
+          resolved = true
           resolve()
           break
 
@@ -109,6 +121,7 @@ const connectWebSocket = useCallback((): Promise<void> => {
           setError(data.message)
           setVoiceState("error")
           setProcessingStage(null)
+          if (!resolved) reject(new Error(data.message))
           break
       }
     }
@@ -121,13 +134,14 @@ const connectWebSocket = useCallback((): Promise<void> => {
     ws.onclose = () => {
       clearInterval(pingInterval)
       wsRef.current = null
+      if (!resolved) reject(new Error("WebSocket closed unexpectedly"))
     }
   })
-}, [accessToken, onTranscript])
+}, [accessToken, onTranscript, getWsUrl])
 
   const startRecording = useCallback(async () => {
     if (!isSupported) {
-      setError("Voice recording not supported in this browser")
+      setError("Microphone access requires HTTPS or localhost. Check your browser permissions.")
       return
     }
 
@@ -142,11 +156,13 @@ const connectWebSocket = useCallback((): Promise<void> => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "audio/webm;codecs=opus"
-      })
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm"
+      const mediaRecorder = new MediaRecorder(stream, { mimeType })
       mediaRecorderRef.current = mediaRecorder
 
+      let seq = 0
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data)
@@ -157,6 +173,8 @@ const connectWebSocket = useCallback((): Promise<void> => {
             if (wsRef.current?.readyState === WebSocket.OPEN) {
               wsRef.current.send(JSON.stringify({
                 type: "audio_chunk",
+                seq: seq++,
+                mimeType,
                 data: base64
               }))
             }
@@ -165,7 +183,7 @@ const connectWebSocket = useCallback((): Promise<void> => {
         }
       }
 
-      mediaRecorder.start(250)
+      mediaRecorder.start(1000)
       setVoiceState("recording")
 
     } catch (err) {

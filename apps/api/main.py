@@ -1,3 +1,6 @@
+import uuid
+import asyncio
+import structlog
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -5,7 +8,9 @@ from contextlib import asynccontextmanager
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.core.config import settings
 from app.core.logger import setup_logging, logger
-from app.core.database import check_database_connection
+from app.core.database import check_database_connection, check_database_health
+from app.core.circuit_breaker import get_redis
+from app.core.rate_limiter import RedisRateLimiter
 from app.routers import auth
 from app.routers import converse
 from app.routers import integrations
@@ -72,9 +77,22 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("sample_docs_failed", error=str(e))
 
+    # Track background tasks for graceful shutdown
+    _background_tasks: list = []
+
     logger.info("orqestra_ready")
     yield
     logger.info("orqestra_stopping")
+
+    # Graceful shutdown: wait for active background tasks
+    if _background_tasks:
+        logger.info("awaiting_background_tasks", count=len(_background_tasks))
+        remaining = [t for t in _background_tasks if not t.done()]
+        for t in remaining:
+            try:
+                await asyncio.wait_for(asyncio.shield(t), timeout=5)
+            except Exception:
+                pass
 
 
 app = FastAPI(
@@ -86,17 +104,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://localhost",
-]
-if settings.ENVIRONMENT == "production":
-    ALLOWED_ORIGINS.append(settings.FRONTEND_URL)
+def _parse_allowed_origins() -> list:
+    origins = ["http://localhost:5173", "http://localhost:3000", "http://localhost"]
+    if settings.ALLOWED_ORIGINS:
+        extras = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
+        origins.extend(extras)
+    if settings.FRONTEND_URL and settings.FRONTEND_URL not in origins:
+        origins.append(settings.FRONTEND_URL)
+    return list(dict.fromkeys(origins))
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=_parse_allowed_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -105,7 +125,23 @@ app.add_middleware(
 )
 
 if settings.ENVIRONMENT == "production":
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[settings.FRONTEND_URL.replace("http://", "").replace("https://", "")])
+    allowed_host = settings.FRONTEND_URL.replace("http://", "").replace("https://", "").split("/")[0]
+    if allowed_host:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=[allowed_host])
+
+# Rate limiter (Redis-backed)
+app.add_middleware(RedisRateLimiter, redis_getter=get_redis)
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    """Generate request ID, bind to logger context, return as header."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    structlog.contextvars.bind_contextvars(request_id=request_id)
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    structlog.contextvars.clear_contextvars()
+    return response
 
 
 @app.exception_handler(HTTPException)
@@ -137,11 +173,41 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health", tags=["System"])
 async def health_check():
+    components = {}
+
+    db_status = await check_database_health()
+    components["database"] = db_status
+
+    try:
+        r = await get_redis()
+        await r.ping()
+        components["redis"] = {"status": "healthy"}
+    except Exception as e:
+        components["redis"] = {"status": "degraded", "error": str(e)}
+
+    llm_keys = []
+    if settings.GEMINI_API_KEY:
+        llm_keys.append("gemini")
+    if settings.GROQ_API_KEY:
+        llm_keys.append("groq")
+    if settings.OPENROUTER_API_KEY:
+        llm_keys.append("openrouter")
+    components["llm"] = {
+        "status": "healthy" if llm_keys else "degraded",
+        "configured_providers": llm_keys or [],
+    }
+
+    overall = "healthy"
+    for name, status in components.items():
+        if status.get("status") == "degraded":
+            overall = "degraded"
+
     return {
-        "status": "healthy",
+        "status": overall,
         "environment": settings.ENVIRONMENT,
         "version": "0.1.0",
-        "llm_provider": settings.LLM_PROVIDER
+        "llm_provider": settings.LLM_PROVIDER,
+        "components": components,
     }
 
 

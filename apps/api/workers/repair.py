@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
 from app.core.logger import logger
+from app.core.task_utils import safe_create_task
 from app.models.integration import Integration
 from app.models.user import User
 from app.agents.repair_agent import (
@@ -198,7 +199,7 @@ async def handle_successful_repair(integration: Integration, fixed_code: str, us
             )
             logger.info("repair_success_email_sent", name=integration.name)
         except Exception as e:
-            logger.warning("email_failed", error=str(e))
+            logger.error("email_failed", error=str(e))
 
     if integration.repo_path and integration.file_path and integration.default_branch:
         try:
@@ -253,12 +254,12 @@ async def handle_failed_repair(integration: Integration, error: str, user: User,
                     api_name=integration.api_name
                 )
             except Exception as e:
-                logger.warning("failure_email_failed", error=str(e))
+                logger.error("failure_email_failed", error=str(e))
 
         logger.error("repair_failed_permanently", name=integration.name, attempts=attempt)
     else:
         integration.status = "healing"
         await db.commit()
 
-        asyncio.create_task(repair_integration_direct(str(integration.id)))
+        safe_create_task(repair_integration_direct(str(integration.id)), name=f"repair_retry_{integration.id}")
         logger.info("repair_retry_scheduled", name=integration.name, next_attempt=attempt + 1)

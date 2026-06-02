@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { motion } from "motion/react"
 import { toast } from "sonner"
 import { useThemeStore } from "@/store/themeStore"
@@ -341,6 +341,8 @@ export default function IntegrationsPage() {
   const [detailData, setDetailData] = useState<Integration | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const prevStatuses = useRef<Record<string, string>>({})
+  const lastToastTime = useRef<Record<string, number>>({})
+  const pollRef = useRef<ReturnType<typeof setInterval>>()
 
   const fetchIntegrations = async () => {
     try {
@@ -352,6 +354,10 @@ export default function IntegrationsPage() {
       data.forEach((integration: Integration) => {
         const prev = prevStatuses.current[integration.id]
         if (prev && prev !== integration.status) {
+          const now = Date.now()
+          const last = lastToastTime.current[integration.id] || 0
+          if (now - last < 10000) return
+          lastToastTime.current[integration.id] = now
           const name = integration.api_name || integration.name
           if (integration.status === "healing") {
             toast.success(`Self-healing started for ${name}`)
@@ -373,13 +379,19 @@ export default function IntegrationsPage() {
   }
 
   useEffect(() => {
-    fetchIntegrations()
-    // Auto-refresh every 30s so status updates are visible without a manual reload
-    const interval = setInterval(fetchIntegrations, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    const activeCount = integrations.filter(
+      (i) => i.status === "healing" || i.status === "broken"
+    ).length
 
-  const fetchDetail = async (id: string) => {
+    fetchIntegrations()
+
+    // Adaptive polling (Issue #29): 15s if active, 60s otherwise
+    const delay = activeCount > 0 ? 15000 : 60000
+    const interval = setInterval(fetchIntegrations, delay)
+    return () => clearInterval(interval)
+  }, [accessToken])
+
+  const fetchDetail = useCallback(async (id: string) => {
     setDetailLoading(true)
     try {
       const res = await api.get(`/api/integrations/${id}/health`, {
@@ -391,7 +403,7 @@ export default function IntegrationsPage() {
     } finally {
       setDetailLoading(false)
     }
-  }
+  }, [accessToken])
 
   const openDetail = (id: string) => {
     setSelectedId(id)
@@ -403,6 +415,13 @@ export default function IntegrationsPage() {
     setDetailData(null)
   }
 
+  // Auto-refresh detail panel every 15s when open
+  useEffect(() => {
+    if (!selectedId) return
+    const interval = setInterval(() => fetchDetail(selectedId), 15000)
+    return () => clearInterval(interval)
+  }, [selectedId, fetchDetail])
+
   const handleDelete = async (id: string) => {
     const integration = integrations.find(i => i.id === id)
     const name = integration?.api_name || "Integration"
@@ -411,10 +430,10 @@ export default function IntegrationsPage() {
         headers: { Authorization: `Bearer ${accessToken}` }
       }),
       {
-        loading: `Removing ${name}...`,
+        loading: `Removing ${name} integration...`,
         success: () => {
           setIntegrations(prev => prev.filter(i => i.id !== id))
-          return `Removed ${name}`
+          return `${name} integration removed`
         },
         error: "Failed to remove integration",
       }

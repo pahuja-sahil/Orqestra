@@ -29,7 +29,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
           headers: { Authorization: `Bearer ${token}` }
         })
         setUser(userRes.data)
-        toast.success("Logged in successfully")
+        if (!sessionStorage.getItem("orqestra_auth_toast_shown")) {
+          toast.success("Logged in successfully")
+          sessionStorage.setItem("orqestra_auth_toast_shown", "true")
+        }
         setChecking(false)
       } catch {
         navigate("/auth/login")

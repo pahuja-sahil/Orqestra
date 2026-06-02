@@ -25,14 +25,16 @@ def get_current_user_id(request: Request) -> str:
 @router.get("")
 async def list_integrations(
     request: Request,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    limit: int = 50,
+    offset: int = 0,
 ):
     user_id = get_current_user_id(request)
     result = await db.execute(
         select(Integration).where(
             Integration.user_id == user_id,
             Integration.is_active == True
-        )
+        ).offset(offset).limit(limit)
     )
     integrations = result.scalars().all()
     return [

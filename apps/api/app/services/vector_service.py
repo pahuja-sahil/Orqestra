@@ -2,37 +2,100 @@ import chromadb
 from chromadb.config import Settings as ChromaSettings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.core.config import settings
+from app.core.circuit_breaker import get_redis
 from app.core.logger import logger
 import httpx
+import hashlib
 
 # Initialize ChromaDB client
-# Stores data in a local folder called "chroma_db"
-chroma_client = chromadb.PersistentClient(
-    path="./chroma_db",
-    settings=ChromaSettings(anonymized_telemetry=False)
-)
+# Supports persistent (local) or HTTP (server) mode via CHROMA_MODE env var
+if settings.CHROMA_MODE == "http":
+    chroma_client = chromadb.HttpClient(
+        host=settings.CHROMA_HOST,
+        port=settings.CHROMA_PORT,
+        settings=ChromaSettings(anonymized_telemetry=False)
+    )
+else:
+    chroma_client = chromadb.PersistentClient(
+        path="./chroma_db",
+        settings=ChromaSettings(anonymized_telemetry=False)
+    )
+
+_shared_httpx_client = None
+
+
+def _get_shared_client() -> httpx.AsyncClient:
+    global _shared_httpx_client
+    if _shared_httpx_client is None:
+        _shared_httpx_client = httpx.AsyncClient(timeout=30)
+    return _shared_httpx_client
+
+
+def _text_hash(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()
+
 
 async def get_jina_embedding(text: str) -> list[float]:
-    """Get embedding from Jina v4 API."""
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            "https://api.jina.ai/v1/embeddings",
-            headers={
-                "Authorization": f"Bearer {settings.JINA_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "jina-embeddings-v3",
-                "task": "retrieval.passage",
-                "input": [text]
-            }
-        )
-        data = response.json()
-        return data["data"][0]["embedding"]
+    """Get embedding from Jina v4 API with Redis caching (Issue #24)."""
+    text_h = _text_hash(text)
+    try:
+        redis = await get_redis()
+        cached = await redis.get(f"embedding:{text_h}")
+        if cached:
+            import json
+            return json.loads(cached)
+    except Exception:
+        pass
+
+    client = _get_shared_client()
+    response = await client.post(
+        "https://api.jina.ai/v1/embeddings",
+        headers={
+            "Authorization": f"Bearer {settings.JINA_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "jina-embeddings-v3",
+            "task": "retrieval.passage",
+            "input": [text]
+        }
+    )
+    data = response.json()
+    embedding = data["data"][0]["embedding"]
+
+    try:
+        import json
+        redis = await get_redis()
+        await redis.setex(f"embedding:{text_h}", 3600, json.dumps(embedding))
+    except Exception:
+        pass
+
+    return embedding
+
 
 async def get_jina_embeddings_batch(texts: list[str]) -> list[list[float]]:
-    """Get embeddings for multiple texts."""
-    async with httpx.AsyncClient(timeout=30) as client:
+    """Get embeddings for multiple texts with individual caching."""
+    client = _get_shared_client()
+    uncached_texts = []
+    uncached_indices = []
+    results = [None] * len(texts)
+
+    try:
+        redis = await get_redis()
+        import json
+        for i, text in enumerate(texts):
+            text_h = _text_hash(text)
+            cached = await redis.get(f"embedding:{text_h}")
+            if cached:
+                results[i] = json.loads(cached)
+            else:
+                uncached_texts.append(text)
+                uncached_indices.append(i)
+    except Exception:
+        uncached_texts = texts
+        uncached_indices = list(range(len(texts)))
+
+    if uncached_texts:
         response = await client.post(
             "https://api.jina.ai/v1/embeddings",
             headers={
@@ -42,11 +105,22 @@ async def get_jina_embeddings_batch(texts: list[str]) -> list[list[float]]:
             json={
                 "model": "jina-embeddings-v3",
                 "task": "retrieval.passage",
-                "input": texts
+                "input": uncached_texts
             }
         )
         data = response.json()
-        return [item["embedding"] for item in data["data"]]
+        try:
+            import json
+            redis = await get_redis()
+            for idx, item in zip(uncached_indices, data["data"]):
+                embedding = item["embedding"]
+                results[idx] = embedding
+                text_h = _text_hash(uncached_texts[uncached_indices.index(idx)])
+                await redis.setex(f"embedding:{text_h}", 3600, json.dumps(embedding))
+        except Exception:
+            pass
+
+    return results
 
 def get_or_create_collection(name: str):
     """Get existing collection or create new one."""
@@ -107,9 +181,20 @@ async def retrieve_relevant_chunks(
             logger.warning("collection_empty", name=collection_name)
             return []
 
-        # NEW: use Jina for query embedding
-        # task="retrieval.query" for questions (different from passage)
-        async with httpx.AsyncClient(timeout=30) as client:
+        # Cache query embedding in Redis (Issue #24)
+        query_h = _text_hash(f"query:{query}")
+        query_embedding = None
+        try:
+            redis = await get_redis()
+            import json
+            cached = await redis.get(f"qembed:{query_h}")
+            if cached:
+                query_embedding = json.loads(cached)
+        except Exception:
+            pass
+
+        if query_embedding is None:
+            client = _get_shared_client()
             response = await client.post(
                 "https://api.jina.ai/v1/embeddings",
                 headers={
@@ -124,6 +209,12 @@ async def retrieve_relevant_chunks(
             )
             data = response.json()
             query_embedding = data["data"][0]["embedding"]
+            try:
+                import json
+                redis = await get_redis()
+                await redis.setex(f"qembed:{query_h}", 3600, json.dumps(query_embedding))
+            except Exception:
+                pass
 
         results = collection.query(
             query_embeddings=[query_embedding],

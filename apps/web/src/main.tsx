@@ -22,18 +22,21 @@ function Root() {
       <Toaster
         position="bottom-right"
         closeButton
+        expand
+        visibleToasts={5}
         theme={isDark ? "dark" : "light"}
         toastOptions={{
           style: {
-            zIndex: 9999, // Added zIndex to ensure it displays over mobile navbars
+            zIndex: 9999,
             borderRadius: '12px',
-            padding: '12px',
+            padding: '14px 16px',
             fontSize: '14px',
             background: 'var(--bg-toast)',
             border: '2px solid var(--border)',
             color: 'var(--text-primary)',
             flexDirection: 'row',
             gap: '10px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
           },
         }}
         icons={{

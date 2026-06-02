@@ -8,6 +8,8 @@ from app.core.config import settings
 from app.core.logger import logger
 from app.core.monitoring import track_llm_call
 
+MAX_CONTEXT_TOKENS = 4000
+
 # OpenRouter (Llama 3.3 70B Free) - Architect
 openrouter_llm = ChatOpenAI(
     model="meta-llama/llama-3.3-70b-instruct:free",
@@ -49,16 +51,22 @@ async def planner_node(state: OrqestraState) -> OrqestraState:
     history = state.get("conversation_history") or []
     logger.info("planner_node_start", input=state["user_input"][:50], repo_url=repo_url[:60] if repo_url else "EMPTY")
 
-    # Build conversation history block
+    # Build conversation history block with token budget management (Issue #31)
     history_block = ""
     has_code_in_history = False
     last_assistant_content = ""
     if history:
         formatted = []
-        for entry in history[-6:]:
+        token_budget = MAX_CONTEXT_TOKENS
+        for entry in reversed(history[-8:]):
             role = entry.get("role", "user")
-            text = entry.get("content", "")[:300]
-            formatted.append(f"{role.capitalize()}: {text}")
+            text = entry.get("content", "")
+            # Rough token estimate: ~4 chars per token
+            text_truncated = text[:min(len(text), token_budget * 3)]
+            formatted.insert(0, f"{role.capitalize()}: {text_truncated[:300]}")
+            token_budget -= len(text_truncated) // 4
+            if token_budget <= 0:
+                break
             if role == "assistant" and "```" in (entry.get("content", "")):
                 has_code_in_history = True
                 last_assistant_content = entry.get("content", "")
@@ -75,6 +83,8 @@ Important: The user has {repo_status}
 
 Classify the user's intent:
 
+**greeting** — if the user is just saying hi, hello, hey, good morning, etc. Respond warmly and introduce yourself.
+
 **follow_up** — if:
 - The agent just asked a question and the user is answering (yes/no, file choice, "create PR")
 - Code was already generated and the user is now saying "create PR", "make a PR", "integrate in {{file}}", or choosing a file
@@ -84,6 +94,7 @@ Classify the user's intent:
 - Is asking for a NEW API integration (even if they said "go ahead" or "proceed" with new details)
 - Is providing additional integration details (checkout type, endpoint, etc.)
 - Said "go ahead" followed by integration details — but NOT if it's just "create PR"
+- IMPORTANT: If the user provided a repo URL (e.g. github.com/user/repo) but did NOT say what API to integrate, classify as **new_integration** with api_name left empty, and ask what API they want to integrate.
 
 **update_existing** — if the user:
 - Is asking to UPDATE, UPGRADE, MIGRATE, or REFRESH an existing API integration
@@ -93,6 +104,8 @@ Classify the user's intent:
 **general** — not API integration related
 
 Response rules:
+- If the user is greeting you: respond warmly (e.g. "Hey there! I'm ORQESTRA, your API integration assistant. What API would you like to integrate today?"). Vary your wording each time.
+- If the user provided a repo URL but did NOT ask for a specific API: ask what API they want to integrate (e.g. "I see you've shared your repo. What API would you like me to integrate?")
 - If the user wants to integrate an API but has NOT provided a repo URL → ask for their GitHub repo URL. Do NOT give coding tutorials.
 - If the user wants to integrate an API AND HAS a repo URL → acknowledge briefly, do NOT give guides
 - If this is a follow_up wanting a PR → respond naturally like "Got it, creating the PR in {{file}} now"
@@ -101,13 +114,13 @@ Response rules:
 
 Return ONLY valid JSON with no markdown, no backticks:
 {{
-"intent_type": "new_integration" or "follow_up" or "update_existing" or "general",
-"api_name": "name of the API (e.g. Stripe, GitHub, Twilio) — empty for follow_up or general",
+"intent_type": "greeting" or "new_integration" or "follow_up" or "update_existing" or "general",
+"api_name": "name of the API (e.g. Stripe, GitHub, Twilio) — empty for follow_up, greeting, general, or when user gave repo URL but didn't specify an API",
 "integration_goal": "one sentence describing what needs to happen",
 "integration_steps": ["step 1", "step 2", "step 3"],
 "language": "python or javascript (default python if unclear)",
 "target_file": "specific filename if user mentioned one (e.g., check.py, services/stripe.js), otherwise empty string. If user only said 'that file' or 'same file', use the target_file from the last assistant message.",
-"response": "your natural response — ask for repo URL if missing, confirm if present. No tutorials. Vary your wording."
+"response": "your natural response — vary your wording every time. Greet warmly for greetings, ask for API if only URL given, ask for repo URL if missing, confirm if present. No tutorials."
 }}"""
 
     try:
@@ -131,19 +144,23 @@ Return ONLY valid JSON with no markdown, no backticks:
         api_name = plan.get("api_name", "general")
         response_text = plan.get("response", "")
 
-        if intent_type == "follow_up":
+        if intent_type == "greeting":
+            state["skip_codegen"] = True
+            state["api_name"] = "invalid"
+            state["generated_code"] = response_text or "Hey there! I'm ORQESTRA, your API integration assistant. I can help you integrate APIs like Stripe, Twilio, SendGrid, and more into your project. What would you like to integrate today?"
+            logger.info("planner_greeting", response=response_text[:80])
+        elif intent_type == "follow_up":
             # If repo URL is now available and no code was generated before,
             # proceed with code generation instead of skipping
             if repo_url and not has_code_in_history:
-                api_name = plan.get("api_name", "") or "general"
-                state["api_name"] = api_name
+                state["api_name"] = plan.get("api_name") or state.get("api_name") or "general"
                 state["integration_goal"] = plan.get("integration_goal", state["user_input"])
                 state["integration_steps"] = plan.get("integration_steps", [])
                 state["language"] = plan.get("language", "python")
                 state["target_file"] = plan.get("target_file", "")
                 state["skip_codegen"] = False
                 state["integration_type"] = "new"
-                logger.info("planner_proceed_with_repo", api=api_name, repo=repo_url[:40])
+                logger.info("planner_proceed_with_repo", api=state["api_name"], repo=repo_url[:40])
             else:
                 state["skip_codegen"] = True
                 state["generated_code"] = response_text or "Got it! I'll proceed with that."
@@ -163,6 +180,12 @@ Return ONLY valid JSON with no markdown, no backticks:
                 state["skip_codegen"] = False
                 state["integration_type"] = "update"
                 logger.info("planner_update_existing", api=api_name, repo=repo_url[:40])
+        elif not api_name and repo_url:
+            # User gave a repo URL but didn't specify an API
+            state["skip_codegen"] = True
+            state["api_name"] = "invalid"
+            state["generated_code"] = response_text or "I see you've shared your repository. What API would you like to integrate? (e.g. Stripe, Twilio, SendGrid)"
+            logger.info("planner_no_api_name_with_repo", repo=repo_url[:40])
         elif api_name.lower() == "general":
             state["skip_codegen"] = True
             state["api_name"] = "invalid"

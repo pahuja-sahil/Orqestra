@@ -9,6 +9,9 @@ import httpx
 from app.core.logger import logger
 from app.services.vector_service import retrieve_relevant_chunks, ingest_document
 
+# Shared httpx client for connection pooling (Issue #32)
+_httpx_client = httpx.AsyncClient(timeout=15)
+
 
 COMMON_SPEC_PATTERNS = [
     "https://api.{slug}.com/openapi.json",
@@ -31,9 +34,9 @@ def _make_slug(api_name: str) -> str:
     return api_name.lower().replace(" ", "").replace("_", "").replace("-", "")
 
 
-async def try_url(client: httpx.AsyncClient, url: str) -> str | None:
+async def try_url(url: str) -> str | None:
     try:
-        resp = await client.get(url, timeout=8, follow_redirects=True)
+        resp = await _httpx_client.get(url, timeout=8, follow_redirects=True)
         if resp.status_code == 200:
             return url
     except Exception:
@@ -74,37 +77,36 @@ async def discover_api(api_name: str) -> dict:
         return result
 
     # 2. Try common OpenAPI spec URL patterns
-    async with httpx.AsyncClient(timeout=10) as client:
-        for pattern in COMMON_SPEC_PATTERNS:
-            url = pattern.format(slug=slug)
-            logger.info("discovery_trying_spec_url", url=url)
-            found = await try_url(client, url)
-            if found:
-                logger.info("discovery_spec_found", api=api_name, url=found)
-                result["docs_url"] = found
-                try:
-                    resp = await client.get(found, timeout=15, follow_redirects=True)
-                    if resp.status_code == 200:
-                        content = resp.text[:100_000]
-                        result["has_docs"] = True
-                        result["docs_content"] = content
-                        # Cache in ChromaDB for next time
-                        try:
-                            await ingest_document(
-                                text=content[:20_000],
-                                source=f"openapi_{api_name.lower()}"
-                            )
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-                break
+    for pattern in COMMON_SPEC_PATTERNS:
+        url = pattern.format(slug=slug)
+        logger.info("discovery_trying_spec_url", url=url)
+        found = await try_url(url)
+        if found:
+            logger.info("discovery_spec_found", api=api_name, url=found)
+            result["docs_url"] = found
+            try:
+                resp = await _httpx_client.get(found, timeout=15, follow_redirects=True)
+                if resp.status_code == 200:
+                    content = resp.text[:100_000]
+                    result["has_docs"] = True
+                    result["docs_content"] = content
+                    # Cache in ChromaDB for next time
+                    try:
+                        await ingest_document(
+                            text=content[:20_000],
+                            source=f"openapi_{api_name.lower()}"
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            break
 
     # 3. If no spec found, try web search via a simple lookup
     if not result["has_docs"]:
         for pattern in COMMON_HEALTH_PATTERNS:
             url = pattern.format(slug=slug)
-            found = await try_url(httpx.AsyncClient(timeout=8), url)
+            found = await try_url(url)
             if found:
                 result["health_url"] = found
                 break

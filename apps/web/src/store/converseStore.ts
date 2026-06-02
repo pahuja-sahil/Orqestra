@@ -1,5 +1,7 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { persist, createJSONStorage } from "zustand/middleware"
+
+localStorage.removeItem("orqestra-converse")
 
 interface Message {
   id: string
@@ -33,16 +35,21 @@ export const useConverseStore = create<ConverseStore>()(
 
       addMessage: (message) => {
         const id = crypto.randomUUID()
-        set((state) => ({
-          messages: [
+        set((state) => {
+          const MAX_MESSAGES = 50
+          const messages = [
             ...state.messages,
             {
               ...message,
               id,
               timestamp: new Date(),
             },
-          ],
-        }))
+          ]
+          if (messages.length > MAX_MESSAGES) {
+            return { messages: messages.slice(-MAX_MESSAGES) }
+          }
+          return { messages }
+        })
         return id
       },
 
@@ -84,6 +91,7 @@ export const useConverseStore = create<ConverseStore>()(
     {
       name: "orqestra-converse",
       partialize: (state) => ({ messages: state.messages }),
+      storage: createJSONStorage(() => sessionStorage),
     }
   )
 )

@@ -1,3 +1,5 @@
+import asyncio
+import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Request, Depends
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,8 +8,8 @@ from app.core.logger import logger
 from app.services.vector_service import ingest_document
 from app.services.converse_service import transcribe_audio, synthesize_speech, process_command
 from app.services.auth_service import verify_token
-import json
 import base64
+import re
 
 router = APIRouter()
 
@@ -67,8 +69,8 @@ async def voice_websocket(websocket: WebSocket):
     WebSocket for real-time voice streaming.
     
     Protocol:
-      Client sends: { type: "auth", token: "..." }
-      Client sends: { type: "audio_chunk", data: "<base64>" }
+      Client sends: { type: "auth", token: "..." }  — must be first message within 10s
+      Client sends: { type: "audio_chunk", seq: 0, mimeType: "...", data: "<base64>" }
       Client sends: { type: "end_stream" }
       Server sends: { type: "transcript", text: "..." }
       Server sends: { type: "response", text: "..." }
@@ -78,32 +80,50 @@ async def voice_websocket(websocket: WebSocket):
     await websocket.accept()
     logger.info("websocket_connected")
 
-    audio_chunks = []
+    chunks = []  # list of (seq, mime_type, bytes)
+    mime_type = "audio/webm"
     authenticated = False
+    MAX_CHUNKS = 120
 
     try:
+        # Issue #22: Auth timeout — first auth message must arrive within 10s
+        first_message = await asyncio.wait_for(
+            websocket.receive_text(), timeout=10
+        )
+        data = json.loads(first_message)
+
+        if data.get("type") == "auth":
+            token = data.get("token", "")
+            payload = verify_token(token)
+            if not payload:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "Invalid token"
+                }))
+                await websocket.close()
+                return
+            authenticated = True
+            await websocket.send_text(json.dumps({
+                "type": "auth_ok"
+            }))
+            logger.info("websocket_authenticated", user=payload.get("sub"))
+        else:
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": "First message must be auth"
+            }))
+            await websocket.close()
+            return
+
         while True:
             message = await websocket.receive_text()
             data = json.loads(message)
             msg_type = data.get("type")
 
             if msg_type == "auth":
-                token = data.get("token", "")
-                payload = verify_token(token)
-                if not payload:
-                    await websocket.send_text(json.dumps({
-                        "type": "error",
-                        "message": "Invalid token"
-                    }))
-                    await websocket.close()
-                    return
-                authenticated = True
-                await websocket.send_text(json.dumps({
-                    "type": "auth_ok"
-                }))
-                logger.info("websocket_authenticated", user=payload.get("sub"))
+                continue
 
-            elif msg_type == "audio_chunk":
+            if msg_type == "audio_chunk":
                 if not authenticated:
                     await websocket.send_text(json.dumps({
                         "type": "error",
@@ -111,20 +131,33 @@ async def voice_websocket(websocket: WebSocket):
                     }))
                     continue
 
+                if len(chunks) >= MAX_CHUNKS:
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "message": "Recording too long — please send a shorter message and try again"
+                    }))
+                    chunks = []
+                    continue
+
                 chunk_b64 = data.get("data", "")
+                seq = data.get("seq", len(chunks))
+                incoming_mime = data.get("mimeType", "")
+                if incoming_mime:
+                    mime_type = incoming_mime
+
                 if chunk_b64:
                     chunk_bytes = base64.b64decode(chunk_b64)
-                    audio_chunks.append(chunk_bytes)
+                    chunks.append((seq, mime_type, chunk_bytes))
 
                     await websocket.send_text(json.dumps({
                         "type": "chunk_received",
-                        "total_chunks": len(audio_chunks)
+                        "total_chunks": len(chunks)
                     }))
 
-            elif msg_type == "end_stream":
+            if msg_type == "end_stream":
                 if not authenticated:
                     continue
-                if not audio_chunks:
+                if not chunks:
                     await websocket.send_text(json.dumps({
                         "type": "error",
                         "message": "No audio received"
@@ -136,11 +169,13 @@ async def voice_websocket(websocket: WebSocket):
                     "stage": "transcribing"
                 }))
 
-                full_audio = b"".join(audio_chunks)
-                audio_chunks = []
+                chunks.sort(key=lambda c: c[0])
+                full_audio = b"".join(c[2] for c in chunks)
+                stream_mime = chunks[0][1] if chunks else mime_type
+                chunks = []
 
                 try:
-                    transcript = await transcribe_audio(full_audio)
+                    transcript = await transcribe_audio(full_audio, mime_type=stream_mime)
                     await websocket.send_text(json.dumps({
                         "type": "transcript",
                         "text": transcript
@@ -179,7 +214,6 @@ async def voice_websocket(websocket: WebSocket):
                         "type": "complete"
                     }))
 
-
                 except Exception as e:
                     logger.error("voice_processing_error", error=str(e))
                     await websocket.send_text(json.dumps({
@@ -187,11 +221,21 @@ async def voice_websocket(websocket: WebSocket):
                         "message": "Processing failed. Please try again."
                     }))
 
-            elif msg_type == "ping":
+            if msg_type == "ping":
                 await websocket.send_text(json.dumps({
                     "type": "pong"
                 }))
     
+    except asyncio.TimeoutError:
+        logger.warning("websocket_auth_timeout")
+        try:
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": "Authentication timeout — please reconnect and send auth within 10 seconds"
+            }))
+            await websocket.close()
+        except Exception:
+            pass
     except WebSocketDisconnect:
         logger.info("websocket_disconnected")
     except Exception as e:
@@ -213,6 +257,11 @@ async def process_text(
     body = await request.json()
     text = body.get("text", "")
     repo_url = body.get("repo_url", "")
+    # Auto-detect GitHub URL from user text if not provided separately
+    if not repo_url:
+        url_match = re.search(r'https?://github\.com/([\w.-]+/[\w.-]+)', text)
+        if url_match:
+            repo_url = f"https://github.com/{url_match.group(1)}"
     conversation_history = body.get("conversation_history", [])
 
     if not text:
@@ -226,13 +275,19 @@ async def process_text(
         db=db,
         conversation_history=conversation_history,
     )
+
+    api_name = result.get("api_name", "")
+    target_file = result.get("target_file", "")
+    repo_path = result.get("repo_path", "")
+    response_text = result.get("response", "")
+
     return {
-        "response": result["response"],
-        "api_name": result.get("api_name", ""),
-        "target_file": result.get("target_file", ""),
+        "response": response_text,
+        "api_name": api_name,
+        "target_file": target_file,
         "language": result.get("language", "python"),
         "default_branch": result.get("default_branch", "main"),
-        "repo_path": result.get("repo_path", ""),
+        "repo_path": repo_path,
     }
 
 

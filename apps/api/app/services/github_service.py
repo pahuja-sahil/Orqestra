@@ -2,14 +2,17 @@ from github import Github, GithubException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.github_connection import GitHubConnection
+from app.core.encryption import decrypt_value
 from app.core.logger import logger
+from app.core.circuit_breaker import get_redis
 import uuid
+import json
 
 
 async def get_github_client(user_id: str, db: AsyncSession):
     """
     Gets PyGithub client for the user.
-    Reads their stored token from DB.
+    Reads their stored token from DB (decrypted on retrieval).
     """
     result = await db.execute(
         select(GitHubConnection).where(
@@ -21,7 +24,8 @@ async def get_github_client(user_id: str, db: AsyncSession):
     if not connection:
         raise ValueError("GitHub not connected. Please connect GitHub in Settings.")
 
-    return Github(connection.github_token), connection.github_username
+    token = decrypt_value(connection.github_token)
+    return Github(token), connection.github_username
 
 
 async def analyze_repo(
@@ -36,6 +40,8 @@ async def analyze_repo(
     2. Reads key files AND any files whose name/content matches api_name
     3. Detects existing integrations
     4. Finds best file to add new code — API-name-aware
+
+    Results are cached in Redis keyed by repo_url (Issue #25).
     """
     try:
         g, username = await get_github_client(user_id, db)
@@ -43,6 +49,17 @@ async def analyze_repo(
         repo_path = repo_url.replace("https://github.com/", "")
         repo_path = repo_path.replace("http://github.com/", "")
         repo_path = repo_path.strip("/")
+
+        # Try cache first
+        cache_key = f"github_analyze:{repo_path}"
+        try:
+            redis = await get_redis()
+            cached = await redis.get(cache_key)
+            if cached:
+                logger.info("repo_analysis_cache_hit", repo=repo_path)
+                return json.loads(cached)
+        except Exception:
+            pass
 
         logger.info("analyzing_repo", repo=repo_path, user=user_id, api=api_name)
 
@@ -159,7 +176,7 @@ async def analyze_repo(
                     target_file=best_file,
                     has_existing_content=bool(existing_file_content))
 
-        return {
+        result_data = {
             "repo_path": repo_path,
             "repo_name": repo.name,
             "api_name": api_name or repo.name,
@@ -172,6 +189,19 @@ async def analyze_repo(
             "default_branch": repo.default_branch,
             "description": repo.description or ""
         }
+
+        # Cache in Redis for 5 minutes (Issue #25)
+        try:
+            redis = await get_redis()
+            await redis.setex(
+                f"github_analyze:{repo_path}",
+                300,
+                json.dumps(result_data, default=str)
+            )
+        except Exception:
+            pass
+
+        return result_data
 
     except GithubException as e:
         logger.error("github_api_error", error=str(e))
@@ -309,6 +339,7 @@ async def create_integration_pr(
 ) -> dict:
     """
     Creates a PR in user's repo with the generated integration code.
+    Idempotent: checks for existing open PR with same branch prefix before creating.
     """
     if not generated_code or len(generated_code.strip()) < 10 or "encountered an issue" in generated_code:
         logger.error("invalid_code_for_pr", code=generated_code[:50])
@@ -319,7 +350,20 @@ async def create_integration_pr(
         repo = g.get_repo(repo_path)
 
         import time
-        branch_name = f"orqestra/integrate-{api_name.lower().replace(' ', '-')}-{int(time.time())}"
+        branch_prefix = f"orqestra/integrate-{api_name.lower().replace(' ', '-')}"
+        branch_name = f"{branch_prefix}-{int(time.time())}"
+
+        # Issue #18: Check for existing open PR with same branch prefix
+        open_prs = repo.get_pulls(state="open", head=branch_prefix)
+        for existing_pr in open_prs:
+            logger.info("existing_pr_found_reusing", pr_number=existing_pr.number, pr_url=existing_pr.html_url)
+            return {
+                "pr_url": existing_pr.html_url,
+                "pr_number": existing_pr.number,
+                "branch": existing_pr.head.ref,
+                "file": target_file,
+                "note": "Reusing existing open PR"
+            }
 
         base_ref = repo.get_git_ref(f"heads/{default_branch}")
         base_sha = base_ref.object.sha

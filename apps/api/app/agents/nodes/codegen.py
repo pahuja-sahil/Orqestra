@@ -4,9 +4,12 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.agents.state import OrqestraState
 from app.core.config import settings
 from app.core.logger import logger
+from app.core.circuit_breaker import get_redis
 from app.services.guardrails_service import validate_agent_response
 from app.core.monitoring import track_llm_call
 import asyncio
+
+MAX_CONTEXT_TOKENS = 4000
 
 # OpenRouter (Llama 3.3 70B Free)
 openrouter_llm = ChatOpenAI(
@@ -35,7 +38,7 @@ gemini_llm = ChatGoogleGenerativeAI(
 
 
 async def get_llm_response(prompt: str) -> str:
-    """Try multiple LLM providers, skip on rate limits immediately."""
+    """Try multiple LLM providers with Redis-backed cooldown for rate-limited providers (Issue #17)."""
     providers = []
     
     if settings.GEMINI_API_KEY:
@@ -47,6 +50,20 @@ async def get_llm_response(prompt: str) -> str:
     
     if not providers:
         raise Exception("No LLM API keys configured")
+
+    # Check Redis cooldowns — skip providers that were recently rate-limited
+    try:
+        redis = await get_redis()
+        provider_map = dict(providers)
+        available = []
+        for name in provider_map:
+            is_cooled = await redis.get(f"llm_cooldown:{name}")
+            if not is_cooled:
+                available.append((name, provider_map[name]))
+        if available:
+            providers = available
+    except Exception:
+        pass
     
     last_error = None
     for provider_name, llm in providers:
@@ -70,6 +87,13 @@ async def get_llm_response(prompt: str) -> str:
             logger.warning(f"llm_error_{provider_name}",
                           error=error_str[:100],
                           rate_limit=is_rate_limit)
+            if is_rate_limit:
+                try:
+                    redis = await get_redis()
+                    await redis.setex(f"llm_cooldown:{provider_name}", 120, "1")
+                    logger.info(f"llm_cooldown_set_{provider_name}", duration=120)
+                except Exception:
+                    pass
             continue
     
     raise Exception(f"All LLM providers failed. Last error: {last_error}")
