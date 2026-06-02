@@ -26,16 +26,11 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const handleLogout = async () => {
-    try {
-      await api.post("/api/auth/logout")
-      toast.success("Logged out successfully") // Trigger toast
-    } catch (error) {
-      toast.success("Logged out successfully") // Fallback trigger
-    } finally {
-      setMobileOpen(false) // Close mobile drawer
-      logout()
-      navigate("/auth/login")
-    }
+    await api.post("/api/auth/logout")
+    toast.success("Logged out successfully")
+    setMobileOpen(false)
+    logout()
+    navigate("/", { replace: true })
   }
 
   const sidebarContent = (
