@@ -20,15 +20,16 @@ class RedisRateLimiter(BaseHTTPMiddleware):
         if not settings.RATE_LIMIT_ENABLED:
             return await call_next(request)
 
-        client_ip = request.client.host if request.client else "unknown"
         path = request.url.path
 
+        # No rate limiting on auth endpoints (login, logout, OAuth, refresh, 2FA, me)
         if path.startswith("/api/auth/"):
-            limit = 5
-            window = 60
-        else:
-            limit = 60
-            window = 60
+            return await call_next(request)
+
+        client_ip = request.client.host if request.client else "unknown"
+
+        limit = 60
+        window = 60
 
         try:
             redis = await self.get_redis()
