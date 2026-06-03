@@ -43,6 +43,7 @@ async def github_connect(request: Request):
     github_auth_url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={settings.GITHUB_CLIENT_ID}"
+        f"&redirect_uri={settings.BACKEND_URL}/api/github/callback"
         f"&scope=repo,read:user,user:email"
         f"&state={csrf_token}"
     )

@@ -30,52 +30,50 @@ async def lifespan(app: FastAPI):
     if not db_healthy:
         raise RuntimeError("Cannot connect to database. Stopping.")
     
-    # Create tables if they don't exist
-    try:
-        from app.core.database import engine, Base
-        from app.models.user import User
-        from app.models.integration import Integration
-        from app.models.github_connection import GitHubConnection
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("database_tables_created")
-    except Exception as e:
-        logger.warning("table_creation_error", error=str(e))
+    # Create tables + seed sample docs only in development
+    if settings.ENVIRONMENT == "development":
+        try:
+            from app.core.database import engine, Base
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("database_tables_created")
+        except Exception as e:
+            logger.warning("table_creation_error", error=str(e))
 
-    try:
-        from app.services.vector_service import get_or_create_collection, ingest_document
-        collection = get_or_create_collection("api_docs")
-        if collection.count() == 0:
-            logger.info("ingesting_sample_docs")
-            await ingest_document(
-                text="""
-                Stripe API allows developers to accept payments online.
-                Use the Payment Intents API to create payments.
-                Endpoint: POST https://api.stripe.com/v1/payment_intents
-                Required: amount (in cents), currency (e.g. usd)
-                Auth: Bearer token with secret key sk_test_...
-                Confirm payment: POST /v1/payment_intents/{id}/confirm
-                Webhooks notify your app on payment.succeeded or payment.failed
-                Register webhooks in your Stripe dashboard.
+        try:
+            from app.services.vector_service import get_or_create_collection, ingest_document
+            collection = get_or_create_collection("api_docs")
+            if collection.count() == 0:
+                logger.info("ingesting_sample_docs")
+                await ingest_document(
+                    text="""
+                    Stripe API allows developers to accept payments online.
+                    Use the Payment Intents API to create payments.
+                    Endpoint: POST https://api.stripe.com/v1/payment_intents
+                    Required: amount (in cents), currency (e.g. usd)
+                    Auth: Bearer token with secret key sk_test_...
+                    Confirm payment: POST /v1/payment_intents/{id}/confirm
+                    Webhooks notify your app on payment.succeeded or payment.failed
+                    Register webhooks in your Stripe dashboard.
 
-                GitHub API allows access to repositories and code.
-                Endpoint: https://api.github.com
-                Auth: Bearer token or OAuth
-                List repos: GET /user/repos
-                Create repo: POST /user/repos
-                Get file: GET /repos/{owner}/{repo}/contents/{path}
+                    GitHub API allows access to repositories and code.
+                    Endpoint: https://api.github.com
+                    Auth: Bearer token or OAuth
+                    List repos: GET /user/repos
+                    Create repo: POST /user/repos
+                    Get file: GET /repos/{owner}/{repo}/contents/{path}
 
-                Twilio API allows sending SMS and voice calls.
-                Endpoint: https://api.twilio.com/2010-04-01
-                Auth: Account SID and Auth Token
-                Send SMS: POST /Accounts/{SID}/Messages
-                Required: To, From, Body fields
-                """,
-                source="sample_docs"
-            )
-            logger.info("sample_docs_ingested")
-    except Exception as e:
-        logger.warning("sample_docs_failed", error=str(e))
+                    Twilio API allows sending SMS and voice calls.
+                    Endpoint: https://api.twilio.com/2010-04-01
+                    Auth: Account SID and Auth Token
+                    Send SMS: POST /Accounts/{SID}/Messages
+                    Required: To, From, Body fields
+                    """,
+                    source="sample_docs"
+                )
+                logger.info("sample_docs_ingested")
+        except Exception as e:
+            logger.warning("sample_docs_failed", error=str(e))
 
     # Track background tasks for graceful shutdown
     _background_tasks: list = []
@@ -125,9 +123,11 @@ app.add_middleware(
 )
 
 if settings.ENVIRONMENT == "production":
-    allowed_host = settings.FRONTEND_URL.replace("http://", "").replace("https://", "").split("/")[0]
-    if allowed_host:
-        app.add_middleware(TrustedHostMiddleware, allowed_hosts=[allowed_host])
+    frontend_host = settings.FRONTEND_URL.replace("http://", "").replace("https://", "").split("/")[0]
+    backend_host = settings.BACKEND_URL.replace("http://", "").replace("https://", "").split("/")[0]
+    allowed_hosts = [h for h in [frontend_host, backend_host] if h]
+    if allowed_hosts:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 # Rate limiter (Redis-backed)
 app.add_middleware(RedisRateLimiter, redis_getter=get_redis)
