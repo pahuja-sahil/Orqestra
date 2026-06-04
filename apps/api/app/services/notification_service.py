@@ -66,15 +66,15 @@ async def send_integration_fixed(
             "to": user_email,
             "subject": f"✅ ORQESTRA: Your {api_name} integration has been fixed",
             "html": f"""
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
-                    <h1 style="margin: 0 0 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto">
+                <div style="background: linear-gradient(135deg, #0a0005, #1a0018); padding: 32px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <h1 style="margin: 0; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 12px; color: #ffffff; font-size: 24px;">
   <span style="display: inline-block; padding: 8px; background: rgba(59, 7, 100, 0.6); border-radius: 10px; line-height: 0;">
     <img src="https://orqestra.me/webhook.png" style="height: 20px; width: 20px; display: block;" alt="" />
   </span>
-  <span style="color: #a78bfa;">ORQESTRA</span>
+  <span style="color: #a78bfa; line-height: 1;">ORQESTRA</span>
 </h1>
-                    <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
+                    <p style="color: #94a3b8; margin: 8px  0 0 16px; font-size: 14px; text-align: center;">Autonomous API Integration Platform</p>
                 </div>
                 
                 <div style="padding: 24px; border: 1px solid #86efac; border-radius: 12px; margin-top: 16px;">
@@ -113,15 +113,15 @@ async def send_integration_failed_repair(
             "to": user_email,
             "subject": f"🚨 ORQESTRA: Manual attention required for {api_name}",
             "html": f"""
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
-                    <h1 style="margin: 0 0 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto">
+                <div style="background: linear-gradient(135deg, #0a0005, #1a0018); padding: 32px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <h1 style="margin: 0; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 12px; color: #ffffff; font-size: 24px;">
   <span style="display: inline-block; padding: 8px; background: rgba(59, 7, 100, 0.6); border-radius: 10px; line-height: 0;">
     <img src="https://orqestra.me/webhook.png" style="height: 20px; width: 20px; display: block;" alt="" />
   </span>
-  <span style="color: #a78bfa;">ORQESTRA</span>
+  <span style="color: #a78bfa; line-height: 1;">ORQESTRA</span>
 </h1>
-                    <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
+                    <p style="color: #94a3b8; margin: 8px  0 0 16px; font-size: 14px; text-align: center;">Autonomous API Integration Platform</p>
                 </div>
                 
                 <div style="padding: 24px; border: 1px solid #fca5a5; border-radius: 12px; margin-top: 16px;">
@@ -162,15 +162,15 @@ async def send_welcome_email(user_email: str, user_name: str):
             "to": user_email,
             "subject": "🎉 Welcome to ORQESTRA — Your AI Integration Platform",
             "html": f"""
-            <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #0a0005, #1a0020); padding: 32px; border-radius: 12px; text-align: center;">
-                    <h1 style="margin: 0 0 4px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto">
+                <div style="background: linear-gradient(135deg, #0a0005, #1a0018); padding: 32px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <h1 style="margin: 0; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 12px; color: #ffffff; font-size: 24px;">
   <span style="display: inline-block; padding: 8px; background: rgba(59, 7, 100, 0.6); border-radius: 10px; line-height: 0;">
     <img src="https://orqestra.me/webhook.png" style="height: 20px; width: 20px; display: block;" alt="" />
   </span>
-  <span style="color: #a78bfa;">ORQESTRA</span>
+  <span style="color: #a78bfa; line-height: 1;">ORQESTRA</span>
 </h1>
-                    <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
+                    <p style="color: #94a3b8; margin: 8px  0 0 16px; font-size: 14px; text-align: center;">Autonomous API Integration Platform</p>
                 </div>
 
                 <div style="padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; margin-top: 16px;">
