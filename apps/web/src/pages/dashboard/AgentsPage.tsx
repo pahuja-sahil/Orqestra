@@ -119,7 +119,7 @@ export default function AgentsPage() {
             transition={{ delay: 0.3 + i * 0.08 }}
             className="rounded-2xl border p-4 bg-[var(--bg-card)] border-[var(--border)] shadow-sm text-center sm:text-left"
           >
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3 bg-[var(--bg-element)]">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3 mx-auto sm:mx-0 bg-[var(--bg-element)]">
               <Icon size={15} className="text-[var(--text-accent)]" />
             </div>
             <p className="text-2xl font-bold mb-0.5 text-[var(--text-primary)]">
