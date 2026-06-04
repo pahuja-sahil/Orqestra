@@ -30,16 +30,17 @@ async def lifespan(app: FastAPI):
     if not db_healthy:
         raise RuntimeError("Cannot connect to database. Stopping.")
     
-    # Create tables + seed sample docs only in development
-    if settings.ENVIRONMENT == "development":
-        try:
-            from app.core.database import engine, Base
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-            logger.info("database_tables_created")
-        except Exception as e:
-            logger.warning("table_creation_error", error=str(e))
+    # Create tables on every startup
+    try:
+        from app.core.database import engine, Base
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("database_tables_created")
+    except Exception as e:
+        logger.warning("table_creation_error", error=str(e))
 
+    # Seed sample docs only in development
+    if settings.ENVIRONMENT == "development":
         try:
             from app.services.vector_service import get_or_create_collection, ingest_document
             collection = get_or_create_collection("api_docs")
