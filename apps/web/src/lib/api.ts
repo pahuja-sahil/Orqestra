@@ -9,25 +9,32 @@ const api = axios.create({
   withCredentials: true,
 })
 
+let isRefreshing = false
+let isRedirecting = false
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config
     if (error.response?.status === 401 && !original._retry) {
+      if (isRedirecting) return Promise.reject(error)
       original._retry = true
-      try {
-        const res = await api.post(
-          '/api/auth/refresh',
-          {},
-        )
-        const newToken = res.data.access_token
-        useAuthStore.getState().setAccessToken(newToken)
-        original.headers.Authorization = `Bearer ${newToken}`
-        return api(original)
-      } catch {
-        useAuthStore.getState().logout()
-        toast.error("Session expired — please log in again")
-        window.location.href = '/auth/login'
+      if (!isRefreshing) {
+        isRefreshing = true
+        try {
+          const res = await api.post('/api/auth/refresh', {})
+          isRefreshing = false
+          const newToken = res.data.access_token
+          useAuthStore.getState().setAccessToken(newToken)
+          original.headers.Authorization = `Bearer ${newToken}`
+          return api(original)
+        } catch {
+          isRefreshing = false
+          isRedirecting = true
+          useAuthStore.getState().logout()
+          toast.error("Session expired — please log in again")
+          window.location.href = '/auth/login'
+        }
       }
     }
     return Promise.reject(error)
