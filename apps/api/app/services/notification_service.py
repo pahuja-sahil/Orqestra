@@ -1,3 +1,4 @@
+import asyncio
 import resend
 from app.core.config import settings
 from app.core.logger import logger
@@ -12,7 +13,7 @@ async def send_integration_broken(
     api_name: str
 ):
     try:
-        resend.Emails.send({
+        await asyncio.to_thread(resend.Emails.send, {
             "from": settings.RESEND_FROM_EMAIL,
             "to": user_email,
             "subject": f"⚠️ ORQESTRA: Your {api_name} integration needs attention",
@@ -55,7 +56,7 @@ async def send_integration_fixed(
     api_name: str
 ):
     try:
-        resend.Emails.send({
+        await asyncio.to_thread(resend.Emails.send, {
             "from": settings.RESEND_FROM_EMAIL,
             "to": user_email,
             "subject": f"✅ ORQESTRA: Your {api_name} integration has been fixed",
@@ -97,7 +98,7 @@ async def send_integration_failed_repair(
     api_name: str
 ):
     try:
-        resend.Emails.send({
+        await asyncio.to_thread(resend.Emails.send, {
             "from": settings.RESEND_FROM_EMAIL,
             "to": user_email,
             "subject": f"🚨 ORQESTRA: Manual attention required for {api_name}",
@@ -136,3 +137,46 @@ async def send_integration_failed_repair(
                     integration=integration_name)
     except Exception as e:
         logger.error("notification_failed", error=str(e))
+
+
+async def send_welcome_email(user_email: str, user_name: str):
+    display_name = user_name or "there"
+    try:
+        await asyncio.to_thread(resend.Emails.send, {
+            "from": settings.RESEND_FROM_EMAIL,
+            "to": user_email,
+            "subject": "🎉 Welcome to ORQESTRA — Your AI Integration Platform",
+            "html": f"""
+            <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #0a0005, #1a0020); padding: 32px; border-radius: 12px; text-align: center;">
+                    <h1 style="color: #a78bfa; margin: 0 0 4px;">⚡ ORQESTRA</h1>
+                    <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
+                </div>
+
+                <div style="padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; margin-top: 16px;">
+                    <h2 style="color: #1e293b; font-size: 22px;">Welcome, {display_name}! 🚀</h2>
+                    <p style="color: #475569; line-height: 1.6;">Thanks for joining ORQESTRA. Your account is ready, and you can start integrating APIs in minutes — no manual coding required.</p>
+
+                    <div style="background: #f8fafc; border-radius: 10px; padding: 20px; margin: 20px 0;">
+                        <p style="margin: 8px 0;">🤖 <strong>Converse with AI</strong> — Describe your API, and ORQESTRA generates the code</p>
+                        <p style="margin: 8px 0;">🔄 <strong>Self-healing</strong> — Integrations that repair themselves when issues arise</p>
+                        <p style="margin: 8px 0;">📊 <strong>Real-time monitoring</strong> — Dashboard with live health status</p>
+                        <p style="margin: 8px 0;">🔗 <strong>GitHub sync</strong> — Auto-create PRs with generated integration code</p>
+                    </div>
+
+                    <a href="{settings.FRONTEND_URL}/dashboard" 
+                       style="background: #7c3aed; color: white; padding: 14px 32px; border-radius: 10px; 
+                              text-decoration: none; display: inline-block; font-size: 16px; font-weight: 600;">
+                        Go to Dashboard →
+                    </a>
+
+                    <p style="color: #94a3b8; font-size: 13px; margin-top: 24px;">
+                        If you have questions, reply to this email or visit <a href="https://orqestra.me" style="color: #7c3aed;">orqestra.me</a>
+                    </p>
+                </div>
+            </div>
+            """
+        })
+        logger.info("welcome_email_sent", email=user_email)
+    except Exception as e:
+        logger.error("welcome_email_failed", error=str(e))

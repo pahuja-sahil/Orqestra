@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
 from authlib.integrations.httpx_client import AsyncOAuth2Client
+from app.services.notification_service import send_welcome_email
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.logger import logger
@@ -101,6 +102,7 @@ async def google_callback(
         await db.commit()
         await db.refresh(user)
         logger.info("user_created", email=user.email)
+        await send_welcome_email(user.email, user.name)
 
     user_id = str(user.id)
 

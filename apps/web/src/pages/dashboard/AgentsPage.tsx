@@ -117,7 +117,7 @@ export default function AgentsPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 + i * 0.08 }}
-            className="rounded-2xl border p-4 bg-[var(--bg-card)] border-[var(--border)] shadow-sm"
+            className="rounded-2xl border p-4 bg-[var(--bg-card)] border-[var(--border)] shadow-sm text-center sm:text-left"
           >
             <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3 bg-[var(--bg-element)]">
               <Icon size={15} className="text-[var(--text-accent)]" />
