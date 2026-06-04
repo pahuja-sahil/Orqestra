@@ -21,10 +21,10 @@ async def send_integration_broken(
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
                     <h1 style="margin: 0 0 8px; display: flex; align-items: center; gap: 8px;">
-  <span style="display: inline-flex; padding: 6px; background: rgba(59, 7, 100, 0.6); border-radius: 10px;">
+  <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(59, 7, 100, 0.6); border-radius: 10px; flex-shrink: 0;">
     <img src="https://orqestra.me/webhook.png" style="height: 20px; width: 20px; display: block;" alt="" />
   </span>
-  <span style="color: #ef4444;">ORQESTRA</span>
+  <span style="color: #a78bfa;">ORQESTRA</span>
 </h1>
                     <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
                 </div>
@@ -69,10 +69,10 @@ async def send_integration_fixed(
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
                     <h1 style="margin: 0 0 8px; display: flex; align-items: center; gap: 8px;">
-  <span style="display: inline-flex; padding: 6px; background: rgba(59, 7, 100, 0.6); border-radius: 10px;">
+  <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(59, 7, 100, 0.6); border-radius: 10px; flex-shrink: 0;">
     <img src="https://orqestra.me/webhook.png" style="height: 20px; width: 20px; display: block;" alt="" />
   </span>
-  <span style="color: #ef4444;">ORQESTRA</span>
+  <span style="color: #a78bfa;">ORQESTRA</span>
 </h1>
                     <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
                 </div>
@@ -116,10 +116,10 @@ async def send_integration_failed_repair(
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
                     <h1 style="margin: 0 0 8px; display: flex; align-items: center; gap: 8px;">
-  <span style="display: inline-flex; padding: 6px; background: rgba(59, 7, 100, 0.6); border-radius: 10px;">
+  <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(59, 7, 100, 0.6); border-radius: 10px; flex-shrink: 0;">
     <img src="https://orqestra.me/webhook.png" style="height: 20px; width: 20px; display: block;" alt="" />
   </span>
-  <span style="color: #ef4444;">ORQESTRA</span>
+  <span style="color: #a78bfa;">ORQESTRA</span>
 </h1>
                     <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
                 </div>
@@ -165,7 +165,7 @@ async def send_welcome_email(user_email: str, user_name: str):
             <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: linear-gradient(135deg, #0a0005, #1a0020); padding: 32px; border-radius: 12px; text-align: center;">
                     <h1 style="margin: 0 0 4px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-  <span style="display: inline-flex; padding: 6px; background: rgba(59, 7, 100, 0.6); border-radius: 10px;">
+  <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(59, 7, 100, 0.6); border-radius: 10px; flex-shrink: 0;">
     <img src="https://orqestra.me/webhook.png" style="height: 20px; width: 20px; display: block;" alt="" />
   </span>
   <span style="color: #a78bfa;">ORQESTRA</span>
