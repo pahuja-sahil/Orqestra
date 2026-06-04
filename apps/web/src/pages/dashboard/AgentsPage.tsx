@@ -76,20 +76,20 @@ export default function AgentsPage() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="font-semibold text-sm text-[var(--text-primary)]">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 mb-1.5">
+                    <h3 className="font-semibold text-sm text-[var(--text-primary)] leading-none">
                       {agent.name}
                     </h3>
-                    <span className="text-xs px-2 py-0.5 rounded-lg bg-[var(--bg-element)] text-[var(--text-muted)]">
+                    <span className="text-xs px-2 py-0.5 rounded-lg bg-[var(--bg-element)] text-[var(--text-muted)] w-fit break-words">
                       {agent.model}
                     </span>
                   </div>
-                  <p className="text-xs text-[var(--text-muted)]">
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">
                     {agent.description}
                   </p>
                 </div>
 
-                <CheckCircle size={16} className="text-[var(--border)]" />
+                <CheckCircle size={16} className="text-[var(--border)] flex-shrink-0 mt-0.5 sm:mt-0" />
               </motion.div>
 
               {i < PIPELINE.length - 1 && (
