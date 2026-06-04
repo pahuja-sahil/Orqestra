@@ -20,7 +20,7 @@ async def send_integration_broken(
             "html": f"""
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
-                    <h1 style="color: #ef4444; margin: 0 0 8px;">⚡ ORQESTRA</h1>
+                    <h1 style="color: #ef4444; margin: 0 0 8px;"><img src="https://orqestra.me/webhook.png" style="height: 24px; vertical-align: middle;" alt="" /> ORQESTRA</h1>
                     <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
                 </div>
                 
@@ -63,7 +63,7 @@ async def send_integration_fixed(
             "html": f"""
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
-                    <h1 style="color: #ef4444; margin: 0 0 8px;">⚡ ORQESTRA</h1>
+                    <h1 style="color: #ef4444; margin: 0 0 8px;"><img src="https://orqestra.me/webhook.png" style="height: 24px; vertical-align: middle;" alt="" /> ORQESTRA</h1>
                     <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
                 </div>
                 
@@ -105,7 +105,7 @@ async def send_integration_failed_repair(
             "html": f"""
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: #0a0005; padding: 24px; border-radius: 12px;">
-                    <h1 style="color: #ef4444; margin: 0 0 8px;">⚡ ORQESTRA</h1>
+                    <h1 style="color: #ef4444; margin: 0 0 8px;"><img src="https://orqestra.me/webhook.png" style="height: 24px; vertical-align: middle;" alt="" /> ORQESTRA</h1>
                     <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
                 </div>
                 
@@ -149,7 +149,7 @@ async def send_welcome_email(user_email: str, user_name: str):
             "html": f"""
             <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: linear-gradient(135deg, #0a0005, #1a0020); padding: 32px; border-radius: 12px; text-align: center;">
-                    <h1 style="color: #a78bfa; margin: 0 0 4px;"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAACZJREFUSIntzTEBAAAIwzDAv+dhAr5UQNNJ6rN5vQMAAAAAAACctQu6Ay3XcgkWAAAAAElFTkSuQmCC" style="height: 24px; vertical-align: middle;" alt="" /> ORQESTRA</h1>
+                    <h1 style="color: #a78bfa; margin: 0 0 4px;"><img src="https://orqestra.me/webhook.png" style="height: 24px; vertical-align: middle;" alt="" /> ORQESTRA</h1>
                     <p style="color: #94a3b8; margin: 0;">Autonomous API Integration Platform</p>
                 </div>
 
