@@ -1,5 +1,5 @@
 import { motion } from "motion/react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { useThemeStore } from "@/store/themeStore"
 
 function EdgeGlow({ isDark, side }: { isDark: boolean; side: "left" | "right" }) {
@@ -227,13 +227,13 @@ export default function LoginPage() {
             className={`text-xs text-center mt-6 ${isDark ? "text-slate-600" : "text-slate-400"}`}
           >
             By signing in you agree to our{" "}
-            <span className={`cursor-pointer ${isDark ? "text-violet-500 hover:text-violet-400" : "text-violet-600 hover:text-violet-500"}`}>
+            <Link to="/terms" className={`cursor-pointer ${isDark ? "text-violet-500 hover:text-violet-400" : "text-violet-600 hover:text-violet-500"}`}>
               Terms of Service
-            </span>{" "}
+            </Link>{" "}
             and{" "}
-            <span className={`cursor-pointer ${isDark ? "text-violet-500 hover:text-violet-400" : "text-violet-600 hover:text-violet-500"}`}>
+            <Link to="/privacy" className={`cursor-pointer ${isDark ? "text-violet-500 hover:text-violet-400" : "text-violet-600 hover:text-violet-500"}`}>
               Privacy Policy
-            </span>
+            </Link>
           </motion.p>
 
           <motion.div

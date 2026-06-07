@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import { motion } from "motion/react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { useThemeStore } from "@/store/themeStore"
 import { Bot, RefreshCw, Mic, Zap, Shield, Code2, ArrowRight, Loader2 } from "lucide-react"
 import { LampContainer } from "@/components/ui/lamp"
@@ -173,12 +173,14 @@ export default function HomePage() {
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate("/auth/login")}
-              className={`group flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold transition-all duration-200 shadow-xl text-sm sm:text-base ${btnPrimary}`}
+              className={`group flex items-center justify-center gap-2 w-full sm:w-auto px-7 py-3.5 rounded-full font-semibold transition-all duration-200 shadow-xl text-sm sm:text-base ${btnPrimary}`}
             >
               Get Started
               <ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-1" />
             </motion.button>
 
+            {/* View Demo button hidden until demo is ready */}
+            {/*
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate("/dashboard")}
@@ -186,6 +188,7 @@ export default function HomePage() {
             >
               View Demo
             </motion.button>
+            */}
           </motion.div>
         </motion.div>
       </LampContainer>
@@ -397,15 +400,25 @@ export default function HomePage() {
             © {new Date().getFullYear()} ORQESTRA. All rights reserved.
           </p>
           <div className="flex items-center gap-4 sm:gap-6">
-            {["Privacy", "Terms", "Docs"].map((link) => (
-              <a key={link} href="#"
-                className={`text-xs sm:text-sm transition-colors duration-200 ${
-                  isDark ? "text-slate-600 hover:text-violet-400" : "text-slate-400 hover:text-violet-600"
-                }`}
-              >
-                {link}
-              </a>
-            ))}
+            <Link to="/privacy"
+              className={`text-xs sm:text-sm transition-colors duration-200 ${
+                isDark ? "text-slate-600 hover:text-violet-400" : "text-slate-400 hover:text-violet-600"
+              }`}
+            >
+              Privacy
+            </Link>
+            <Link to="/terms"
+              className={`text-xs sm:text-sm transition-colors duration-200 ${
+                isDark ? "text-slate-600 hover:text-violet-400" : "text-slate-400 hover:text-violet-600"
+              }`}
+            >
+              Terms
+            </Link>
+            <span className={`text-xs sm:text-sm ${
+              isDark ? "text-slate-500" : "text-slate-400"
+            }`}>
+              Docs
+            </span>
           </div>
         </div>
       </footer>
